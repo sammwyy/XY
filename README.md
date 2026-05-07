@@ -1,36 +1,59 @@
-# Xyon PS2 Engine
+# Xyon - PS2 Game/Homebrew engine
 
-Small C++ PS2 engine scaffold using ps2sdk, gsKit and audsrv.
+C++ PS2 engine using ps2sdk, gsKit and audsrv.
 
 ## Layout
 
 - `src/`: engine modules.
-  - `xy_game`: `XYGame` base class and loop.
-  - `xy_image`: PNG/JPG texture wrapper.
+  - `xy_alloc`: custom EE/VRAM memory allocation.
+  - `xy_game`: `XYGame` base class and main loop.
   - `xy_graphics`: gsKit init, frame, sprites and rectangles.
+  - `xy_audio`: PCM mixer with voices (BGM + 8 SFX), supports WAV and SND loading.
+  - `image/`: PNG/JPG/P2TX image loading and VRAM uploading.
+  - `sound/`: WAV and SND format loaders with resource management.
   - `xy_input`: two joypads with pressed/down/released states.
-  - `xy_audio`: WAV PCM mixer with looping BGM and one-shot SFX.
   - `xy_debug_text`: 5x7 pixel font overlay.
-- `examples/render_images`: JPG background plus centered PNG sprite.
-- `examples/audio`: looping BGM plus CROSS/CIRCLE/SQUARE one-shots.
-- `examples/input_status`: text status for both joypads.
+- `tools/`: offline asset converters.
+- `docs/`: format specs and usage guides.
+
+## Docs
+
+- [Audio System](docs/audio.md) — P2SN format, converter, mixer API.
+- [Image System](docs/image.md) — P2TX format, converter, texture API.
+
+## Asset Pipeline
+
+Source assets (WAV, PNG, JPG) are converted offline to PS2-optimized binary formats:
+
+```
+.wav  → tools/ps2snd.py → .snd    (P2SN: 64-byte header + aligned PCM16)
+.png  → tools/ps2tex.py → .ps2tex (P2TX: 40-byte header + GS pixel data + CLUT)
+.jpg  → tools/ps2tex.py → .ps2tex
+```
+
+## Examples
+
+- `examples/audio`: looping BGM plus CROSS/CIRCLE/SQUARE one-shot SFX (using `.snd`).
 - `examples/debug_text`: debug overlay and glyph sample.
+- `examples/input_status`: text status for both joypads.
+- `examples/render_images`: JPG background plus centered PNG sprite (using `.ps2tex`).
+
+## Tools
+
+- `tools/ps2snd.py`: WAV → `.snd` (P2SN) converter. Supports `--mono`, `--resample`, `--loop-start/end`.
+- `tools/ps2tex.py`: PNG/JPG → `.ps2tex` (P2TX) converter. Supports `--format` (psmt8/psmt4/ct16/ct32) and `--swizzle`.
 
 ## Build
 
-Windows:
-
-```bat
+```sh
+# Windows:
 build.bat render_images
 build.bat audio
 build.bat input_status
 build.bat debug_text
 build.bat all
-```
 
-Linux/macOS:
-
-```sh
+# Linux/MacOS
 sh build.sh render_images
 sh build.sh audio
 sh build.sh input_status
@@ -44,27 +67,4 @@ You can also build every example after the Docker image exists:
 docker run --rm -v "$(pwd):/xyon" -w /xyon xyon-ps2 make all
 ```
 
-When running an ELF through `host:`, run it with the example folder as host root so paths like `host:assets/sprite.png` and `host:audsrv.irx` resolve.
-
-## Images
-
-`XYTexture::load` detects `.png`, `.jpg` and `.jpeg` automatically:
-
-```cpp
-texture.load(graphics().gs(), "host:assets/sprite.png");
-```
-
-Manual format selection is available when the path has no useful extension:
-
-```cpp
-texture.load(graphics().gs(), "host:assets/background", xy::XY_IMAGE_JPG);
-texture.loadPng(graphics().gs(), "host:assets/sprite.bin");
-texture.loadJpg(graphics().gs(), "host:assets/background.bin");
-```
-
-For manual VRAM upload:
-
-```cpp
-texture.load(graphics().gs(), "host:assets/sprite.png", xy::XY_IMAGE_AUTO, xy::XY_TEXTURE_UPLOAD_MANUAL);
-texture.upload(graphics().gs());
-```
+When running an ELF through `host:`, run it with the example folder as host root so paths like `host:assets/sprite.ps2tex` and `host:audsrv.irx` resolve.

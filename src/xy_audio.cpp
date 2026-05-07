@@ -148,6 +148,68 @@ bool XYAudio::loadWav(const char* path, XYSound& out) {
     return true;
 }
 
+bool XYAudio::loadSnd(const char* path, XYSound& out) {
+    FILE* file = std::fopen(path, "rb");
+    if (!file) {
+        return false;
+    }
+
+    // Read 64-byte P2SN header
+    u8 header[64];
+    if (std::fread(header, 1, 64, file) != 64 ||
+        std::memcmp(header, "P2SN", 4) != 0) {
+        std::fclose(file);
+        return false;
+    }
+
+    int channels    = read16(header + 6);
+    int sampleRate  = static_cast<int>(read32(header + 8));
+    u32 dataSize    = read32(header + 24);
+    u32 dataOffset  = read32(header + 28);
+
+    if (channels != 1 && channels != 2) {
+        std::fclose(file);
+        return false;
+    }
+
+    if (sampleRate != sampleRate_) {
+        std::fclose(file);
+        return false;
+    }
+
+    std::fseek(file, static_cast<long>(dataOffset), SEEK_SET);
+    std::vector<u8> pcmBytes(dataSize);
+    if (std::fread(pcmBytes.data(), 1, dataSize, file) != dataSize) {
+        std::fclose(file);
+        return false;
+    }
+
+    std::fclose(file);
+
+    out.sampleRate = sampleRate;
+    out.channels = channels;
+    out.samples.resize(dataSize / 2);
+    for (unsigned int i = 0; i < out.samples.size(); ++i) {
+        out.samples[i] = static_cast<s16>(read16(&pcmBytes[i * 2]));
+    }
+    return true;
+}
+
+bool XYAudio::load(const char* path, XYSound& out) {
+    std::string p(path);
+    std::string ext;
+    auto dot = p.find_last_of('.');
+    if (dot != std::string::npos) {
+        ext = p.substr(dot + 1);
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+    }
+
+    if (ext == "snd" || ext == "ps2snd" || ext == "p2s") {
+        return loadSnd(path, out);
+    }
+    return loadWav(path, out);
+}
+
 void XYAudio::playBgm(const XYSound& sound, bool loop, float volume) {
     bgm_.sound = &sound;
     bgm_.positionFrames = 0;

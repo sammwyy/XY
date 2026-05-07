@@ -2,6 +2,7 @@
 
 #include <tamtypes.h>
 
+#include <string>
 #include <vector>
 
 namespace xy {
@@ -24,6 +25,8 @@ public:
     void shutdown();
 
     bool loadWav(const char* path, XYSound& out);
+    bool loadSnd(const char* path, XYSound& out);
+    bool load(const char* path, XYSound& out);  // auto-detect by extension
     void playBgm(const XYSound& sound, bool loop = true, float volume = 0.65f);
     void stopBgm();
     void playSfx(const XYSound& sound, float volume = 1.0f);

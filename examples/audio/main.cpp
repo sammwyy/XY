@@ -4,10 +4,10 @@ class AudioExample : public xy::XYGame {
 public:
     bool onInit() override {
         bool ok = true;
-        ok = audio().loadWav("host:assets/bgm.wav", bgm_) && ok;
-        ok = audio().loadWav("host:assets/sfx_cross.wav", sfxCross_) && ok;
-        ok = audio().loadWav("host:assets/sfx_circle.wav", sfxCircle_) && ok;
-        ok = audio().loadWav("host:assets/sfx_square.wav", sfxSquare_) && ok;
+        ok = audio().load("host:assets/bgm.snd", bgm_) && ok;
+        ok = audio().load("host:assets/sfx_cross.snd", sfxCross_) && ok;
+        ok = audio().load("host:assets/sfx_circle.snd", sfxCircle_) && ok;
+        ok = audio().load("host:assets/sfx_square.snd", sfxSquare_) && ok;
         if (ok) {
             audio().playBgm(bgm_, true, 0.45f);
         }
@@ -28,7 +28,7 @@ public:
 
     void onRender() override {
         debugText().drawText(34, 44, "AUDIO EXAMPLE", xy::Color(255, 255, 80), 3);
-        debugText().drawText(34, 90, "BGM LOOP: ASSETS/BGM.WAV", xy::Color(230, 240, 255), 2);
+        debugText().drawText(34, 90, "BGM LOOP: ASSETS/BGM.SND", xy::Color(230, 240, 255), 2);
         debugText().drawText(34, 125, "CROSS  CIRCLE  SQUARE", xy::Color(160, 255, 190), 2);
     }
 
@@ -43,4 +43,3 @@ int main() {
     AudioExample game;
     return game.run();
 }
-

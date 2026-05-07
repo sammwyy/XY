@@ -81,6 +81,7 @@ void XYVramAllocator::_free(uint32_t address) {
 }
 
 void XYVramAllocator::_clear(GSGLOBAL* gs) {
+    (void)gs;
     blocks_.clear();
     next_ptr_ = 0;
     used_bytes_ = 0;

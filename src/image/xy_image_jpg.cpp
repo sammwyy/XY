@@ -62,6 +62,7 @@ bool XYImageJPG::loadGS(GSGLOBAL* gs) {
 }
 
 void XYImageJPG::unloadGS(GSGLOBAL* gs) {
+    (void)gs;
     if (texture_.Vram != 0) {
         XYVramAllocator::free(texture_.Vram);
         texture_.Vram = 0;
