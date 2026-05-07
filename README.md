@@ -44,6 +44,8 @@ Source assets (WAV, PNG, JPG) are converted offline to PS2-optimized binary form
 - `examples/render_images`: JPG background plus centered PNG sprite (using `.ps2tex`).
 - `examples/custom_font`: Demonstrates custom BMFont loading and rendering.
 - `examples/tasks`: Demonstrates delayed and repeated tasks.
+- `examples/render_3d`: Controllable 3D cube.
+- `examples/voxel_game`: First-person voxel floor demo with collision.
 
 ## Tools
 
@@ -60,6 +62,8 @@ build.bat audio
 build.bat input_status
 build.bat debug_text
 build.bat tasks
+build.bat render_3d
+build.bat voxel_game
 build.bat all
 
 # Linux/MacOS
@@ -68,6 +72,8 @@ sh build.sh audio
 sh build.sh input_status
 sh build.sh debug_text
 sh build.sh tasks
+sh build.sh render_3d
+sh build.sh voxel_game
 sh build.sh all
 ```
 

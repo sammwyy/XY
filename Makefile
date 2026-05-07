@@ -1,4 +1,4 @@
-EXAMPLES := render_images audio input_status debug_text custom_font tasks render_3d
+EXAMPLES := render_images audio input_status debug_text custom_font tasks render_3d voxel_game
 
 .PHONY: all build clean clean-all clean-one run $(EXAMPLES)
 

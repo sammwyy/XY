@@ -11,6 +11,7 @@
 namespace xy {
 
 class XYGraphics;
+class XYRenderPredicate;
 
 // ---------------------------------------------------------------------------
 // DrawCall3D — a single render submission
@@ -21,6 +22,33 @@ struct DrawCall3D {
     const XYMesh*     mesh     = nullptr;
     const XYMaterial* material = nullptr;
     Mat4              model    = Mat4::identity();
+    const XYRenderPredicate* predicate = nullptr;
+};
+
+struct RenderFaceContext {
+    const DrawCall3D* drawCall = nullptr;
+    int triangleIndex = 0;
+    u32 i0 = 0;
+    u32 i1 = 0;
+    u32 i2 = 0;
+    const Vertex* v0 = nullptr;
+    const Vertex* v1 = nullptr;
+    const Vertex* v2 = nullptr;
+    Vec3 localCenter = Vec3::zero();
+    Vec3 localNormal = Vec3::up();
+    Vec3 worldCenter = Vec3::zero();
+    Vec3 worldNormal = Vec3::up();
+};
+
+class XYRenderPredicate {
+public:
+    virtual ~XYRenderPredicate() = default;
+
+    // Return false to skip an entire draw call before per-triangle processing.
+    virtual bool shouldDrawMesh(const DrawCall3D& call) const;
+
+    // Return false to skip this triangle before transform/project/lighting.
+    virtual bool shouldDrawFace(const RenderFaceContext& face) const;
 };
 
 // ---------------------------------------------------------------------------
@@ -61,6 +89,12 @@ public:
 
     // Shorthand for submit()
     void drawMesh(const XYMesh& mesh, const Mat4& model, const XYMaterial& material);
+    void drawMesh(const XYMesh& mesh, const Mat4& model, const XYMaterial& material,
+                  const XYRenderPredicate* predicate);
+
+    // Optional global predicate. Per-draw predicates are applied in addition.
+    void setRenderPredicate(const XYRenderPredicate* predicate);
+    const XYRenderPredicate* renderPredicate() const { return predicate_; }
 
     // Process the queue and emit to GS. Call before XYGraphics::endFrame()
     void flush();
@@ -68,6 +102,7 @@ public:
     // --- Stats (debug) ---
     int lastFrameTriangles() const { return lastTris_; }
     int lastFrameDrawCalls() const { return lastDC_;   }
+    int lastFrameCulledTriangles() const { return lastCulledTris_; }
 
 private:
     // Transforms, lights, shading for one draw call (CPU path)
@@ -94,6 +129,7 @@ private:
     GSGLOBAL*                gs_     = nullptr;
     const XYCamera*          cam_    = nullptr;
     const XYLightSystem*     lights_ = nullptr;
+    const XYRenderPredicate* predicate_ = nullptr;
     Mat4                     vp_;       // cached VP = proj * view
     float                    halfW_  = 320.0f;
     float                    halfH_  = 224.0f;
@@ -106,6 +142,7 @@ private:
     // Stats
     int lastTris_ = 0;
     int lastDC_   = 0;
+    int lastCulledTris_ = 0;
 };
 
 } // namespace xy

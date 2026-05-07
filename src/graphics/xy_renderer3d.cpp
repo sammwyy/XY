@@ -7,6 +7,14 @@
 
 namespace xy {
 
+bool XYRenderPredicate::shouldDrawMesh(const DrawCall3D&) const {
+    return true;
+}
+
+bool XYRenderPredicate::shouldDrawFace(const RenderFaceContext&) const {
+    return true;
+}
+
 XYRenderer3D::XYRenderer3D(XYGraphics* gfx)
     : gfx_(gfx)
     , gs_(gfx ? gfx->gs() : nullptr)
@@ -24,6 +32,11 @@ void XYRenderer3D::begin(const XYCamera& camera, const XYLightSystem& lights) {
     drawCount_ = 0;
     lastTris_  = 0;
     lastDC_    = 0;
+    lastCulledTris_ = 0;
+
+    if (gs_) {
+        gsKit_set_test(gs_, GS_ZTEST_ON);
+    }
 }
 
 void XYRenderer3D::submit(const DrawCall3D& call) {
@@ -33,11 +46,21 @@ void XYRenderer3D::submit(const DrawCall3D& call) {
 }
 
 void XYRenderer3D::drawMesh(const XYMesh& mesh, const Mat4& model, const XYMaterial& mat) {
+    drawMesh(mesh, model, mat, nullptr);
+}
+
+void XYRenderer3D::drawMesh(const XYMesh& mesh, const Mat4& model, const XYMaterial& mat,
+                            const XYRenderPredicate* predicate) {
     DrawCall3D dc;
     dc.mesh     = &mesh;
     dc.material = &mat;
     dc.model    = model;
+    dc.predicate = predicate;
     submit(dc);
+}
+
+void XYRenderer3D::setRenderPredicate(const XYRenderPredicate* predicate) {
+    predicate_ = predicate;
 }
 
 void XYRenderer3D::flush() {
@@ -45,11 +68,14 @@ void XYRenderer3D::flush() {
 
     lastDC_   = drawCount_;
     lastTris_ = 0;
+    lastCulledTris_ = 0;
 
     for (int i = 0; i < drawCount_; i++) {
         processDraw(drawQueue_[i]);
     }
     drawCount_ = 0;
+
+    gsKit_set_test(gs_, GS_ZTEST_OFF);
 }
 
 // ---------------------------------------------------------------------------
@@ -71,6 +97,12 @@ void XYRenderer3D::flush() {
 void XYRenderer3D::processDraw(const DrawCall3D& dc) {
     const XYMesh&     mesh = *dc.mesh;
     const XYMaterial& mat  = dc.material ? *dc.material : XYMaterial{};
+
+    if ((predicate_ && !predicate_->shouldDrawMesh(dc)) ||
+        (dc.predicate && !dc.predicate->shouldDrawMesh(dc))) {
+        lastCulledTris_ += mesh.triangleCount();
+        return;
+    }
 
     // Compute MVP = VP * Model (cached VP from begin())
     Mat4 mvp = vp_ * dc.model;
@@ -110,25 +142,70 @@ void XYRenderer3D::processDraw(const DrawCall3D& dc) {
         const Vertex& vb = verts[i1];
         const Vertex& vc = verts[i2];
 
+        Vec3 localCenter = (va.position + vb.position + vc.position) / 3.0f;
+        Vec3 localNormal = (va.normal + vb.normal + vc.normal).normalized();
+        Vec3 worldCenter = dc.model.transformPoint(localCenter);
+        Vec3 worldNormal = normalMat.transformDirection(localNormal).normalized();
+
+        RenderFaceContext face;
+        face.drawCall = &dc;
+        face.triangleIndex = t;
+        face.i0 = i0;
+        face.i1 = i1;
+        face.i2 = i2;
+        face.v0 = &va;
+        face.v1 = &vb;
+        face.v2 = &vc;
+        face.localCenter = localCenter;
+        face.localNormal = localNormal;
+        face.worldCenter = worldCenter;
+        face.worldNormal = worldNormal;
+
+        if ((predicate_ && !predicate_->shouldDrawFace(face)) ||
+            (dc.predicate && !dc.predicate->shouldDrawFace(face))) {
+            lastCulledTris_++;
+            continue;
+        }
+
         // --- Transform positions to clip space (MVP) ---
         Vec4 ca = mvp.transformVec4({va.position, 1.0f});
         Vec4 cb = mvp.transformVec4({vb.position, 1.0f});
         Vec4 cc = mvp.transformVec4({vc.position, 1.0f});
 
+        // --- Conservative frustum cull ---
+        // Reject only if ALL three vertices are behind the camera (w<=0).
+        if (ca.w <= 0.0f && cb.w <= 0.0f && cc.w <= 0.0f) continue;
+        // Reject if any vertex is behind the camera (cannot project safely).
+        if (ca.w <= 0.0f || cb.w <= 0.0f || cc.w <= 0.0f) continue;
+
+        // Compute NDC for conservative side/far plane test.
+        float nx0 = ca.x / ca.w, nx1 = cb.x / cb.w, nx2 = cc.x / cc.w;
+        float ny0 = ca.y / ca.w, ny1 = cb.y / cb.w, ny2 = cc.y / cc.w;
+        float nz0 = ca.z / ca.w, nz1 = cb.z / cb.w, nz2 = cc.z / cc.w;
+
+        // Skip only when ALL three verts are outside the same half-space.
+        // This avoids popping when one vertex crosses the frustum edge.
+        if (nx0 < -1.0f && nx1 < -1.0f && nx2 < -1.0f) continue; // all left
+        if (nx0 >  1.0f && nx1 >  1.0f && nx2 >  1.0f) continue; // all right
+        if (ny0 < -1.0f && ny1 < -1.0f && ny2 < -1.0f) continue; // all below
+        if (ny0 >  1.0f && ny1 >  1.0f && ny2 >  1.0f) continue; // all above
+        if (nz0 < -1.0f && nz1 < -1.0f && nz2 < -1.0f) continue; // all near
+        if (nz0 >  1.0f && nz1 >  1.0f && nz2 >  1.0f) continue; // all far
+
         // --- Project to screen space ---
-        float sx0 = 0.0f, sy0 = 0.0f, sz0 = 0.0f;
-        float sx1 = 0.0f, sy1 = 0.0f, sz1 = 0.0f;
-        float sx2 = 0.0f, sy2 = 0.0f, sz2 = 0.0f;
+        float sx0, sy0, sz0, sx1, sy1, sz1, sx2, sy2, sz2;
+        projectVertex(ca, sx0, sy0, sz0);
+        projectVertex(cb, sx1, sy1, sz1);
+        projectVertex(cc, sx2, sy2, sz2);
 
-        bool vis0 = projectVertex(ca, sx0, sy0, sz0);
-        bool vis1 = projectVertex(cb, sx1, sy1, sz1);
-        bool vis2 = projectVertex(cc, sx2, sy2, sz2);
+        // Clamp out-of-range projections to screen bounds so gsKit stays safe.
+        float scrW = halfW_ * 2.0f - 1.0f;
+        float scrH = halfH_ * 2.0f - 1.0f;
+        sx0 = math::clamp(sx0, 0.0f, scrW); sy0 = math::clamp(sy0, 0.0f, scrH);
+        sx1 = math::clamp(sx1, 0.0f, scrW); sy1 = math::clamp(sy1, 0.0f, scrH);
+        sx2 = math::clamp(sx2, 0.0f, scrW); sy2 = math::clamp(sy2, 0.0f, scrH);
 
-        // This renderer does not clip triangles yet. Reject partially clipped
-        // triangles instead of sending huge projected coordinates to gsKit.
-        if (!vis0 || !vis1 || !vis2) continue;
-
-        // --- Lighting (CPU Phong) ---
+        // --- Lighting normals (CPU Phong) ---
         // Transform normals using the normal matrix (inverse-transpose)
         Vec3 wn0 = normalMat.transformDirection(va.normal).normalized();
         Vec3 wn1 = normalMat.transformDirection(vb.normal).normalized();
@@ -196,19 +273,23 @@ bool XYRenderer3D::projectVertex(const Vec4& clip, float& sx, float& sy, float& 
     float ndcY = clip.y * invW;
     float ndcZ = clip.z * invW;
 
-    if (ndcX < -1.0f || ndcX > 1.0f ||
-        ndcY < -1.0f || ndcY > 1.0f ||
-        ndcZ < -1.0f || ndcZ > 1.0f) {
-        return false;
-    }
-
-    // Map NDC [-1,1] to screen space [0, width/height]
-    // Y is flipped because GS Y axis goes down
+    // Map NDC [-1,1] to screen space [0, width/height].
+    // Y is flipped because GS Y axis goes down.
     sx = (ndcX + 1.0f) * halfW_;
     sy = (1.0f - ndcY) * halfH_;
-    sz = (ndcZ + 1.0f) * 0.5f;   // depth to [0,1]
 
-    return true;
+    // GS_PSMZ_16S has 15 usable bits (max 0x7FFF).
+    // GS clears depth to 0; ZTEST_ON passes when z_pixel >= z_buffer,
+    // so near objects must have HIGHER z values than far objects.
+    // ndcZ in [-1, 1]: near -> -1, far -> +1  (right-handed perspective)
+    // We remap: near -> 0x7FFF, far -> 0, then store as integer.
+    sz = (1.0f - ndcZ) * 0.5f; // [0, 1], near=1, far=0
+
+    // Check if the projected pixel is within NDC range (visible).
+    bool inRange = (ndcX >= -1.0f && ndcX <= 1.0f &&
+                    ndcY >= -1.0f && ndcY <= 1.0f &&
+                    ndcZ >= -1.0f && ndcZ <= 1.0f);
+    return inRange;
 }
 
 void XYRenderer3D::emitTriangle(
@@ -216,12 +297,14 @@ void XYRenderer3D::emitTriangle(
     float x1, float y1, float z1, u64 col1,
     float x2, float y2, float z2, u64 col2)
 {
-    // Gouraud-shaded triangle via gsKit
-    // gsKit_prim_triangle_gouraud_3d takes (x,y,z) in screen space
+    // GS_PSMZ_16S: 15 usable bits, max value 0x7FFF.
+    // Multiply [0,1] depth by 0x7FFF so near (1.0) -> 0x7FFF,
+    // far (0.0) -> 0. GS keeps the pixel that has the GREATER z.
+    static const int GS_ZDEPTH_MAX = 0x7FFF;
     gsKit_prim_triangle_gouraud_3d(gs_,
-        x0, y0, (int)(z0 * 0xFFFFFF),
-        x1, y1, (int)(z1 * 0xFFFFFF),
-        x2, y2, (int)(z2 * 0xFFFFFF),
+        x0, y0, (int)(z0 * GS_ZDEPTH_MAX),
+        x1, y1, (int)(z1 * GS_ZDEPTH_MAX),
+        x2, y2, (int)(z2 * GS_ZDEPTH_MAX),
         col0, col1, col2);
 }
 
@@ -231,10 +314,11 @@ void XYRenderer3D::emitTriangleTextured(
     float x2, float y2, float z2, float u2, float v2, u64 col2,
     GSTEXTURE* tex)
 {
+    static const int GS_ZDEPTH_MAX = 0x7FFF;
     gsKit_prim_triangle_goraud_texture_3d(gs_, tex,
-        x0, y0, (int)(z0 * 0xFFFFFF), u0 * tex->Width, v0 * tex->Height,
-        x1, y1, (int)(z1 * 0xFFFFFF), u1 * tex->Width, v1 * tex->Height,
-        x2, y2, (int)(z2 * 0xFFFFFF), u2 * tex->Width, v2 * tex->Height,
+        x0, y0, (int)(z0 * GS_ZDEPTH_MAX), u0 * tex->Width, v0 * tex->Height,
+        x1, y1, (int)(z1 * GS_ZDEPTH_MAX), u1 * tex->Width, v1 * tex->Height,
+        x2, y2, (int)(z2 * GS_ZDEPTH_MAX), u2 * tex->Width, v2 * tex->Height,
         col0, col1, col2);
 }
 

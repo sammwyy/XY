@@ -151,9 +151,9 @@ bool XYGraphics::init(int width, int height) {
     gs_->Width = width_;
     gs_->Height = height_;
     gs_->PSM = GS_PSM_CT32;
-    gs_->PSMZ = 0;
+    gs_->PSMZ = GS_PSMZ_16S;
     gs_->DoubleBuffering = GS_SETTING_ON;
-    gs_->ZBuffering = GS_SETTING_OFF;
+    gs_->ZBuffering = GS_SETTING_ON;
 
     gsKit_init_screen(gs_);
     gsKit_mode_switch(gs_, GS_ONESHOT);
