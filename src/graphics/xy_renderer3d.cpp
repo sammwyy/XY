@@ -116,9 +116,9 @@ void XYRenderer3D::processDraw(const DrawCall3D& dc) {
         Vec4 cc = mvp.transformVec4({vc.position, 1.0f});
 
         // --- Project to screen space ---
-        float sx0, sy0, sz0;
-        float sx1, sy1, sz1;
-        float sx2, sy2, sz2;
+        float sx0 = 0.0f, sy0 = 0.0f, sz0 = 0.0f;
+        float sx1 = 0.0f, sy1 = 0.0f, sz1 = 0.0f;
+        float sx2 = 0.0f, sy2 = 0.0f, sz2 = 0.0f;
 
         bool vis0 = projectVertex(ca, sx0, sy0, sz0);
         bool vis1 = projectVertex(cb, sx1, sy1, sz1);

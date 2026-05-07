@@ -19,163 +19,181 @@
 #include "mesh/xy_mesh.hpp"
 #include "mesh/xy_primitives.hpp"
 
+#include <cstdio>
+
 using namespace xy;
 
 // ---------------------------------------------------------------------------
-// Scene state
+// Game subclass
 // ---------------------------------------------------------------------------
 
-static XYCamera     camera;
-static XYLightSystem lights;
-static XYRenderer3D* renderer = nullptr;
+class Game3D : public XYGame {
+protected:
+    bool onInit()       override;
+    void onUpdate(float dt) override;
+    void onRender()     override;
+    void onShutdown()   override;
 
-// Meshes (owned)
-static XYMesh* cubeMesh   = nullptr;
-static XYMesh* sphereMesh = nullptr;
-static XYMesh* planeMesh  = nullptr;
+private:
+    XYCamera      camera_;
+    XYLightSystem lights_;
+    XYRenderer3D* renderer_ = nullptr;
 
-// Materials
-static XYMaterial matCube;
-static XYMaterial matSphere;
-static XYMaterial matPlane;
+    XYMesh* cubeMesh_   = nullptr;
+    XYMesh* sphereMesh_ = nullptr;
+    XYMesh* planeMesh_  = nullptr;
 
-// Camera orbit state
-static float orbitAngle  = 0.0f;
-static float orbitHeight = 2.5f;
-static float orbitRadius = 6.0f;
+    XYMaterial matCube_;
+    XYMaterial matSphere_;
+    XYMaterial matPlane_;
 
-// Rotation angles for scene objects
-static float cubeRot   = 0.0f;
-static float sphereRot = 0.0f;
+    float orbitAngle_  = 0.0f;
+    float orbitHeight_ = 2.5f;
+    float orbitRadius_ = 6.0f;
+    float cubeRot_     = 0.0f;
+    float sphereRot_   = 0.0f;
+};
 
 // ---------------------------------------------------------------------------
-// init
+// onInit
 // ---------------------------------------------------------------------------
 
-void xy::XYGame::init() {
+bool Game3D::onInit() {
     // --- Meshes ---
-    cubeMesh   = primitives::createCube(0.75f);
-    sphereMesh = primitives::createSphere(0.6f, 14, 20);
-    planeMesh  = primitives::createPlane(8.0f, 8.0f, 4, 4);
+    cubeMesh_   = primitives::createCube(0.75f);
+    sphereMesh_ = primitives::createSphere(0.6f, 14, 20);
+    planeMesh_  = primitives::createPlane(8.0f, 8.0f, 4, 4);
 
-    // Smooth normals for sphere (matches PS2GL smooth shading mode)
-    sphereMesh->calcSmoothNormals();
-    cubeMesh->calcFlatNormals();
+    cubeMesh_->calcFlatNormals();
+    sphereMesh_->calcSmoothNormals();
 
     // --- Materials ---
-    matCube.diffuse   = {0.8f, 0.3f, 0.2f};   // red-ish
-    matCube.ambient   = {0.2f, 0.08f, 0.05f};
-    matCube.specular  = {0.9f, 0.9f, 0.9f};
-    matCube.shininess = 32.0f;
+    matCube_.diffuse   = {0.8f, 0.3f, 0.2f};
+    matCube_.ambient   = {0.2f, 0.08f, 0.05f};
+    matCube_.specular  = {0.9f, 0.9f, 0.9f};
+    matCube_.shininess = 32.0f;
 
-    matSphere.diffuse   = {0.2f, 0.5f, 0.9f};  // blue
-    matSphere.ambient   = {0.05f, 0.12f, 0.22f};
-    matSphere.specular  = {1.0f, 1.0f, 1.0f};
-    matSphere.shininess = 64.0f;
+    matSphere_.diffuse   = {0.2f, 0.5f, 0.9f};
+    matSphere_.ambient   = {0.05f, 0.12f, 0.22f};
+    matSphere_.specular  = {1.0f, 1.0f, 1.0f};
+    matSphere_.shininess = 64.0f;
 
-    matPlane = XYMaterial::flat(0.3f, 0.6f, 0.3f); // green ground
+    matPlane_ = XYMaterial::flat(0.3f, 0.6f, 0.3f);
 
     // --- Lights ---
-    // Directional key light (like PS2GL light 0 — white, full diffuse+specular)
-    lights.enableLight(0, LightType::Directional);
-    lights.light(0).direction = Vec3{-1.0f, -1.5f, -1.0f}.normalized();
-    lights.light(0).diffuse   = {1.0f, 0.95f, 0.9f};
-    lights.light(0).specular  = {1.0f, 1.0f,  1.0f};
-    lights.light(0).ambient   = {0.05f, 0.05f, 0.05f};
+    // Directional key light
+    lights_.enableLight(0, LightType::Directional);
+    lights_.light(0).direction = Vec3{-1.0f, -1.5f, -1.0f}.normalized();
+    lights_.light(0).diffuse   = {1.0f, 0.95f, 0.9f};
+    lights_.light(0).specular  = {1.0f, 1.0f,  1.0f};
+    lights_.light(0).ambient   = {0.05f, 0.05f, 0.05f};
 
-    // Point fill light (warm, no specular)
-    lights.enableLight(1, LightType::Point);
-    lights.light(1).position       = {3.0f, 2.0f, 2.0f};
-    lights.light(1).diffuse        = {0.6f, 0.5f, 0.3f};
-    lights.light(1).specular       = {0.0f, 0.0f, 0.0f};
-    lights.light(1).linearAtten    = 0.1f;
-    lights.light(1).quadraticAtten = 0.03f;
+    // Point fill light
+    lights_.enableLight(1, LightType::Point);
+    lights_.light(1).position       = {3.0f, 2.0f, 2.0f};
+    lights_.light(1).diffuse        = {0.6f, 0.5f, 0.3f};
+    lights_.light(1).linearAtten    = 0.1f;
+    lights_.light(1).quadraticAtten = 0.03f;
 
-    lights.setGlobalAmbient({0.08f, 0.08f, 0.12f});
+    lights_.setGlobalAmbient({0.08f, 0.08f, 0.12f});
 
     // --- Camera ---
-    camera.setAspect(graphics.width(), graphics.height());
-    camera.setFovDeg(60.0f);
-    camera.setNearFar(0.1f, 100.0f);
+    camera_.setAspect(graphics().width(), graphics().height());
+    camera_.setFovDeg(60.0f);
+    camera_.setNearFar(0.1f, 100.0f);
 
     // --- Renderer ---
-    renderer = new XYRenderer3D(&graphics);
+    renderer_ = new XYRenderer3D(&graphics());
+
+    return true;
 }
 
 // ---------------------------------------------------------------------------
-// update
+// onUpdate
 // ---------------------------------------------------------------------------
 
-void xy::XYGame::update(float dt) {
-    // Orbit camera with left stick / D-pad
-    if (input.isHeld(XYButton::Left))  orbitAngle -= 1.5f * dt;
-    if (input.isHeld(XYButton::Right)) orbitAngle += 1.5f * dt;
-    if (input.isHeld(XYButton::Up))    orbitHeight += 2.0f * dt;
-    if (input.isHeld(XYButton::Down))  orbitHeight -= 2.0f * dt;
-    orbitHeight = math::clamp(orbitHeight, 0.5f, 8.0f);
+void Game3D::onUpdate(float dt) {
+    XYInput& inp = input();
 
-    // Zoom with L1/R1
-    if (input.isHeld(XYButton::L1)) orbitRadius -= 2.0f * dt;
-    if (input.isHeld(XYButton::R1)) orbitRadius += 2.0f * dt;
-    orbitRadius = math::clamp(orbitRadius, 2.0f, 15.0f);
+    if (inp.down(0, XY_BUTTON_LEFT))  orbitAngle_  -= 1.5f * dt;
+    if (inp.down(0, XY_BUTTON_RIGHT)) orbitAngle_  += 1.5f * dt;
+    if (inp.down(0, XY_BUTTON_UP))    orbitHeight_ += 2.0f * dt;
+    if (inp.down(0, XY_BUTTON_DOWN))  orbitHeight_ -= 2.0f * dt;
 
-    // Update camera position (orbit around origin)
+    orbitHeight_ = math::clamp(orbitHeight_, 0.5f, 8.0f);
+
+    if (inp.down(0, XY_BUTTON_L1)) orbitRadius_ -= 2.0f * dt;
+    if (inp.down(0, XY_BUTTON_R1)) orbitRadius_ += 2.0f * dt;
+
+    orbitRadius_ = math::clamp(orbitRadius_, 2.0f, 15.0f);
+
     Vec3 camPos = {
-        cosf(orbitAngle) * orbitRadius,
-        orbitHeight,
-        sinf(orbitAngle) * orbitRadius
+        cosf(orbitAngle_) * orbitRadius_,
+        orbitHeight_,
+        sinf(orbitAngle_) * orbitRadius_
     };
-    camera.lookAt(camPos, Vec3::zero());
+    camera_.lookAt(camPos, Vec3::zero());
 
-    // Rotate objects
-    cubeRot   += 0.8f * dt;
-    sphereRot += 0.4f * dt;
+    cubeRot_   += 0.8f * dt;
+    sphereRot_ += 0.4f * dt;
 }
 
 // ---------------------------------------------------------------------------
-// draw
+// onRender
 // ---------------------------------------------------------------------------
 
-void xy::XYGame::draw() {
-    graphics.beginFrame(Color(15, 15, 25));  // dark blue-grey bg
+void Game3D::onRender() {
+    renderer_->begin(camera_, lights_);
 
-    renderer->begin(camera, lights);
+    // Ground plane
+    renderer_->drawMesh(*planeMesh_,
+        Mat4::translate({0.0f, -1.2f, 0.0f}),
+        matPlane_);
 
-    // --- Ground plane ---
-    renderer->drawMesh(*planeMesh, Mat4::translate({0.0f, -1.2f, 0.0f}), matPlane);
-
-    // --- Rotating cube (left) ---
+    // Rotating cube
     Mat4 cubeModel = Mat4::translate({-1.5f, 0.0f, 0.0f})
-                   * Mat4::rotateY(cubeRot)
-                   * Mat4::rotateX(cubeRot * 0.6f);
-    renderer->drawMesh(*cubeMesh, cubeModel, matCube);
+                   * Mat4::rotateY(cubeRot_)
+                   * Mat4::rotateX(cubeRot_ * 0.6f);
+    renderer_->drawMesh(*cubeMesh_, cubeModel, matCube_);
 
-    // --- Rotating sphere (right) ---
+    // Rotating sphere
     Mat4 sphereModel = Mat4::translate({1.5f, 0.0f, 0.0f})
-                     * Mat4::rotateY(sphereRot);
-    renderer->drawMesh(*sphereMesh, sphereModel, matSphere);
+                     * Mat4::rotateY(sphereRot_);
+    renderer_->drawMesh(*sphereMesh_, sphereModel, matSphere_);
 
-    renderer->flush();
+    renderer_->flush();
 
     // HUD
-    graphics.drawFormat(8, 8, Color(255,255,255), 1.0f,
-        "3D DEMO  TRIS:%d", renderer->lastFrameTriangles());
-    graphics.drawFormat(8, 18, Color(200, 200, 200), 1.0f,
-        "CAM ANG:%.1f  H:%.1f  R:%.1f",
-        math::toDeg(orbitAngle), orbitHeight, orbitRadius);
-    graphics.drawFormat(8, 28, Color(160, 160, 160), 1.0f,
-        "DPAD=ORBIT  L1/R1=ZOOM");
-
-    graphics.endFrame();
+    XYGraphics& gfx = graphics();
+    gfx.drawFormat(8, 8,  Color(255,255,255), 1.0f,
+                   "3D  TRIS:%d", renderer_->lastFrameTriangles());
+    gfx.drawFormat(8, 18, Color(200,200,200), 1.0f,
+                   "ANG:%.1f H:%.1f R:%.1f",
+                   math::toDeg(orbitAngle_), orbitHeight_, orbitRadius_);
+    gfx.drawFormat(8, 28, Color(160,160,160), 1.0f,
+                   "DPAD=ORBIT  L1/R1=ZOOM");
 }
 
 // ---------------------------------------------------------------------------
-// shutdown
+// onShutdown
 // ---------------------------------------------------------------------------
 
-void xy::XYGame::shutdown() {
-    delete renderer;
-    delete cubeMesh;
-    delete sphereMesh;
-    delete planeMesh;
+void Game3D::onShutdown() {
+    delete renderer_;
+    delete cubeMesh_;
+    delete sphereMesh_;
+    delete planeMesh_;
+    renderer_  = nullptr;
+    cubeMesh_  = nullptr;
+    sphereMesh_= nullptr;
+    planeMesh_ = nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+
+int main() {
+    Game3D game;
+    return game.run();
 }
