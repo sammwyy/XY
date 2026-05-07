@@ -1,5 +1,5 @@
 """
-PS2 Sound Converter for Xyon Engine
+PS2 Sound Converter for Xy Engine
 Converts WAV files to .snd (P2SN) format for PS2 runtime.
 
 Usage:
@@ -166,7 +166,7 @@ def convert_wav_to_ps2snd(input_path, output_path,
 
 def main():
     parser = argparse.ArgumentParser(
-        description="PS2 Sound Converter for Xyon Engine — WAV to .snd (P2SN)")
+        description="PS2 Sound Converter for Xy Engine — WAV to .snd (P2SN)")
     parser.add_argument("input", help="Input .wav file")
     parser.add_argument("output", help="Output .snd file")
     parser.add_argument("--loop-start", type=int, default=0,

@@ -15,11 +15,11 @@ RUN wget https://github.com/ps2dev/ps2dev/releases/download/latest/ps2dev-ubuntu
     tar xzf ps2dev-ubuntu-latest.tar.gz && \
     rm ps2dev-ubuntu-latest.tar.gz
 
-RUN mkdir /xyon
-WORKDIR /xyon
-ENV PATH="/ps2dev/ee/bin:/ps2dev/iop/bin:/xyon/tools:${PATH}"
+RUN mkdir /xy
+WORKDIR /xy
+ENV PATH="/ps2dev/ee/bin:/ps2dev/iop/bin:/xy/tools:${PATH}"
 ENV PS2DEV=/ps2dev
 ENV PS2SDK=/ps2dev/ps2sdk
 ENV GSKIT=/ps2dev/gsKit
 
-CMD echo 'usage: docker run --rm -v "$(pwd):/xyon" -w /xyon xyon-ps2 make -C examples/render_images all'
+CMD echo 'usage: docker run --rm -v "$(pwd):/xy" -w /xy xy-ps2 make -C examples/render_images all'

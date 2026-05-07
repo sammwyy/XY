@@ -1,4 +1,4 @@
-# Xyon - PS2 Game/Homebrew engine
+# Xy - PS2 Game/Homebrew engine
 
 C++ PS2 engine using ps2sdk, gsKit and audsrv.
 
@@ -64,7 +64,7 @@ sh build.sh all
 You can also build every example after the Docker image exists:
 
 ```sh
-docker run --rm -v "$(pwd):/xyon" -w /xyon xyon-ps2 make all
+docker run --rm -v "$(pwd):/xy" -w /xy xy-ps2 make all
 ```
 
 When running an ELF through `host:`, run it with the example folder as host root so paths like `host:assets/sprite.ps2tex` and `host:audsrv.irx` resolve.

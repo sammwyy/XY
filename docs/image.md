@@ -1,6 +1,6 @@
 # Image System
 
-Xyon's image pipeline supports loading textures from multiple formats and uploading them to GS VRAM.
+Xy's image pipeline supports loading textures from multiple formats and uploading them to GS VRAM.
 
 ## Formats
 

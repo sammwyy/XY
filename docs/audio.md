@@ -1,6 +1,6 @@
 # Audio System
 
-Xyon's audio pipeline has two layers:
+Xy's audio pipeline has two layers:
 
 1. **Mixer** (`xy_audio`) — low-level voice mixer using audsrv/SPU2.
 2. **Sound module** (`sound/`) — format loaders and resource management.

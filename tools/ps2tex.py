@@ -290,7 +290,7 @@ def process_image(input_path, format_str, swizzle=False):
     }
 
 def main():
-    parser = argparse.ArgumentParser(description="PS2 Texture Converter for Xyon Engine")
+    parser = argparse.ArgumentParser(description="PS2 Texture Converter for Xy Engine")
     parser.add_argument("input", help="Input image (PNG, JPG, etc)")
     parser.add_argument("output", help="Output .ps2tex file")
     parser.add_argument("--format", choices=["psmt8", "psmt4", "ct16", "ct32"], default="psmt8")

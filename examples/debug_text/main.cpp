@@ -9,7 +9,7 @@ public:
         char line[128];
 
         debugText().drawText(40, 36, "HELLO WORLD!", xy::Color(255, 240, 90), 4);
-        debugText().drawText(42, 100, "XYON DEBUG TEXT OVERLAY", xy::Color(230, 240, 255), 2);
+        debugText().drawText(42, 100, "XY DEBUG TEXT OVERLAY", xy::Color(230, 240, 255), 2);
         debugText().drawText(42, 130, "5X7 PIXELART GLYPHS", xy::Color(160, 255, 190), 2);
         debugText().drawText(42, 160, "NUMBERS: 0123456789", xy::Color(180, 210, 255), 2);
 
