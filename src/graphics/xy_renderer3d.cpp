@@ -124,8 +124,9 @@ void XYRenderer3D::processDraw(const DrawCall3D& dc) {
         bool vis1 = projectVertex(cb, sx1, sy1, sz1);
         bool vis2 = projectVertex(cc, sx2, sy2, sz2);
 
-        // Skip if all vertices are behind camera
-        if (!vis0 && !vis1 && !vis2) continue;
+        // This renderer does not clip triangles yet. Reject partially clipped
+        // triangles instead of sending huge projected coordinates to gsKit.
+        if (!vis0 || !vis1 || !vis2) continue;
 
         // --- Lighting (CPU Phong) ---
         // Transform normals using the normal matrix (inverse-transpose)
@@ -195,13 +196,19 @@ bool XYRenderer3D::projectVertex(const Vec4& clip, float& sx, float& sy, float& 
     float ndcY = clip.y * invW;
     float ndcZ = clip.z * invW;
 
+    if (ndcX < -1.0f || ndcX > 1.0f ||
+        ndcY < -1.0f || ndcY > 1.0f ||
+        ndcZ < -1.0f || ndcZ > 1.0f) {
+        return false;
+    }
+
     // Map NDC [-1,1] to screen space [0, width/height]
     // Y is flipped because GS Y axis goes down
     sx = (ndcX + 1.0f) * halfW_;
     sy = (1.0f - ndcY) * halfH_;
     sz = (ndcZ + 1.0f) * 0.5f;   // depth to [0,1]
 
-    return (ndcZ >= -1.0f && ndcZ <= 1.0f);
+    return true;
 }
 
 void XYRenderer3D::emitTriangle(
@@ -212,9 +219,10 @@ void XYRenderer3D::emitTriangle(
     // Gouraud-shaded triangle via gsKit
     // gsKit_prim_triangle_gouraud_3d takes (x,y,z) in screen space
     gsKit_prim_triangle_gouraud_3d(gs_,
-        x0, y0, (int)(z0 * 0xFFFFFF), col0,
-        x1, y1, (int)(z1 * 0xFFFFFF), col1,
-        x2, y2, (int)(z2 * 0xFFFFFF), col2);
+        x0, y0, (int)(z0 * 0xFFFFFF),
+        x1, y1, (int)(z1 * 0xFFFFFF),
+        x2, y2, (int)(z2 * 0xFFFFFF),
+        col0, col1, col2);
 }
 
 void XYRenderer3D::emitTriangleTextured(
@@ -224,9 +232,10 @@ void XYRenderer3D::emitTriangleTextured(
     GSTEXTURE* tex)
 {
     gsKit_prim_triangle_goraud_texture_3d(gs_, tex,
-        x0, y0, (int)(z0 * 0xFFFFFF), u0 * tex->Width, v0 * tex->Height, col0,
-        x1, y1, (int)(z1 * 0xFFFFFF), u1 * tex->Width, v1 * tex->Height, col1,
-        x2, y2, (int)(z2 * 0xFFFFFF), u2 * tex->Width, v2 * tex->Height, col2);
+        x0, y0, (int)(z0 * 0xFFFFFF), u0 * tex->Width, v0 * tex->Height,
+        x1, y1, (int)(z1 * 0xFFFFFF), u1 * tex->Width, v1 * tex->Height,
+        x2, y2, (int)(z2 * 0xFFFFFF), u2 * tex->Width, v2 * tex->Height,
+        col0, col1, col2);
 }
 
 } // namespace xy
