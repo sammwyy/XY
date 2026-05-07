@@ -84,20 +84,32 @@ class P2TXEncoder:
             else: src_offset = offset
             src_i = block * 32 + src_offset
             if src_i < count: new_clut[i*4 : i*4 + 4] = clut_data[src_i*4 : src_i*4 + 4]
+            else: new_clut[i*4:i*4+4] = b"\x00\x00\x00\x00"
         return bytes(new_clut)
 
     @staticmethod
-    def encode(img: Image.Image, swizzle=False):
-        img = img.convert("RGBA")
+    def encode_ct32(img: Image.Image):
         width, height = img.size
+        # Standard PS2 byte order for CT32 is RGBA
+        raw_rgba = list(img.getdata())
+        pixels = bytearray()
+        for r, g, b, a in raw_rgba:
+            # PS2 Alpha: 0..255 -> 0..128
+            ps2_a = (a + 1) >> 1
+            pixels += struct.pack("BBBB", r, g, b, ps2_a)
         
-        aw, ah = align_offset(width, 64), align_offset(height, 32)
-        if aw != width or ah != height:
-            new_img = Image.new("RGBA", (aw, ah), (0,0,0,0))
-            new_img.paste(img, (0,0))
-            img = new_img
-            width, height = aw, ah
+        header = struct.pack(
+            "<4sHHHBBBBIIIII6x",
+            MAGIC_TEX, VERSION_TEX, width, height,
+            P2TXEncoder.GS_PSM_CT32, 0, 0, 1, # PSM_CT32, no clut, 1 mip
+            len(pixels), 0, 40, 0,
+            (1 << 2) # HAS_ALPHA
+        )
+        return header + bytes(pixels)
 
+    @staticmethod
+    def encode_t8(img: Image.Image):
+        width, height = img.size
         indexed = img.quantize(colors=256, method=Image.Quantize.FASTOCTREE)
         pixel_indices = list(indexed.getdata())
         
@@ -130,7 +142,6 @@ class P2TXEncoder:
             len(pixels), len(clut), 40, 40 + len(pixels),
             (1 << 1) | (1 << 2) # CLUT_ROTATED | HAS_ALPHA
         )
-        
         return header + pixels + clut
 
 # ============================================================
@@ -142,12 +153,8 @@ class FontConverter:
         self.glyphs: List[Glyph] = []
         self.kernings: List[Kerning] = []
         self.pages: List[Page] = []
-        self.line_height = 0
-        self.base = 0
-        self.ascent = 0
-        self.descent = 0
-        self.atlas_width = 0
-        self.atlas_height = 0
+        self.line_height, self.base, self.ascent, self.descent = 0, 0, 0, 0
+        self.atlas_width, self.atlas_height = 0, 0
 
     def sort_data(self):
         self.glyphs.sort(key=lambda g: g.codepoint)
@@ -244,52 +251,32 @@ def convert_ttf(input_path, output_path, args):
         final_glyphs.append(Glyph(tg["cp"], 0, curr_x, curr_y, tg["w"], tg["h"], tg["off_x"], tg["off_y"], tg["adv"]))
         curr_x += tg["w"] + margin
         row_h = max(row_h, tg["h"])
-    atlas_w, atlas_h = max_w, align_offset(curr_y + row_h + margin, 16)
+    
+    # PS2 alignment for textures
+    atlas_w = align_offset(max_w, 64)
+    atlas_h = align_offset(curr_y + row_h + margin, 32)
     conv.atlas_width, conv.atlas_height, conv.glyphs = atlas_w, atlas_h, final_glyphs
     img = Image.new("RGBA", (atlas_w, atlas_h), (0,0,0,0))
     draw = ImageDraw.Draw(img)
     for g, tg in zip(final_glyphs, temp_glyphs):
         draw.text((g.x - g.x_offset, g.y - g.y_offset), tg["char"], font=font, fill=(255,255,255,255))
     
-    ext = ".p2t" if args.tex_format == "p2t" else ".png"
+    ext = ".p2t" if args.tex_format != "png" else ".png"
     atlas_name = os.path.basename(output_path).replace(".ps2fnt", ext).replace(".p2f", ext)
-    if args.tex_format == "p2t":
-        atlas_data = P2TXEncoder.encode(img)
-        if not args.embed_atlas:
-            atlas_path = os.path.join(os.path.dirname(output_path), atlas_name)
-            with open(atlas_path, "wb") as f: f.write(atlas_data)
-            atlas_data = None
-    else:
-        atlas_data = None
-        atlas_path = os.path.join(os.path.dirname(output_path), atlas_name)
-        img.save(atlas_path)
-    conv.pages.append(Page(0, atlas_w, atlas_h, atlas_name, atlas_data))
-    conv.write_p2f(output_path, embed_atlas=args.embed_atlas)
-
-def convert_png(input_path, output_path, args):
-    conv = FontConverter()
-    img = Image.open(input_path).convert("RGBA")
-    w, h = img.size
-    cell_w, cell_h, start_cp = args.cell_width, args.cell_height, args.first_codepoint
-    cols, rows = w // cell_w, h // cell_h
-    conv.line_height, conv.base, conv.atlas_width, conv.atlas_height = cell_h, cell_h, w, h
-    for r in range(rows):
-        for c in range(cols):
-            cp = start_cp + (r * cols + c)
-            conv.glyphs.append(Glyph(cp, 0, c * cell_w, r * cell_h, cell_w, cell_h, 0, 0, cell_w))
     
-    ext = ".p2t" if args.tex_format == "p2t" else ".png"
-    atlas_name = os.path.basename(output_path).replace(".ps2fnt", ext).replace(".p2f", ext)
-    if args.tex_format == "p2t":
-        atlas_data = P2TXEncoder.encode(img)
-        if not args.embed_atlas:
-            atlas_path = os.path.join(os.path.dirname(output_path), atlas_name)
-            with open(atlas_path, "wb") as f: f.write(atlas_data)
-            atlas_data = None
+    if args.tex_format == "ct32":
+        atlas_data = P2TXEncoder.encode_ct32(img)
+    elif args.tex_format == "p2t" or args.tex_format == "psmt8":
+        atlas_data = P2TXEncoder.encode_t8(img)
     else:
         atlas_data = None
         img.save(os.path.join(os.path.dirname(output_path), atlas_name))
-    conv.pages.append(Page(0, w, h, atlas_name, atlas_data))
+
+    if atlas_data and not args.embed_atlas:
+        with open(os.path.join(os.path.dirname(output_path), atlas_name), "wb") as f: f.write(atlas_data)
+        atlas_data = None
+
+    conv.pages.append(Page(0, atlas_w, atlas_h, atlas_name, atlas_data))
     conv.write_p2f(output_path, embed_atlas=args.embed_atlas)
 
 def main():
@@ -304,18 +291,14 @@ def main():
     p_png = subparsers.add_parser("convert-png")
     p_png.add_argument("input", help="Input .png grid file")
     p_png.add_argument("output", help="Output .p2f/.ps2fnt file")
-    p_png.add_argument("--cell-width", type=int, required=True)
-    p_png.add_argument("--cell-height", type=int, required=True)
-    p_png.add_argument("--first-codepoint", type=int, default=32)
     for p in [p_ttf, p_png]:
-        p.add_argument("--tex-format", default="p2t", choices=["png", "p2t"], help="Atlas texture format")
+        p.add_argument("--tex-format", default="ct32", choices=["png", "psmt8", "ct32", "p2t"], help="Atlas texture format")
         p.add_argument("--embed-atlas", action="store_true")
         p.add_argument("--padding", type=int, default=2)
         p.add_argument("--page-width", type=int, default=512)
         p.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     if args.command == "convert-ttf": convert_ttf(args.input, args.output, args)
-    elif args.command == "convert-png": convert_png(args.input, args.output, args)
     else: parser.print_help()
 
 if __name__ == "__main__": main()

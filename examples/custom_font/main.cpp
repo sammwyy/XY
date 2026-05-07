@@ -26,11 +26,8 @@ public:
     }
 
     void onRender() override {
-        // Clear screen with a dark blue color
-        graphics().beginFrame(xy::Color(10, 20, 40));
-
         // Render using the custom font
-        graphics().drawText(50, 50, "CUSTOM FONT RENDERING", xy::Color(255, 255, 255), 1.0f, font_);
+        graphics().drawText(50, 50, "Custom Font Rendering", xy::Color(255, 255, 255), 1.0f, font_);
         
         xy::XYFontMetrics metrics = xy::XYFont::getMetrics(font_);
         graphics().drawFormat(50, 100, xy::Color(255, 255, 100), 1.0f, font_, 
@@ -41,8 +38,6 @@ public:
 
         // Comparison with fallback (debug) font
         graphics().drawText(50, 350, "FALLBACK FONT (DEBUG GLYPHS)", xy::Color(200, 200, 200), 2.0f);
-
-        graphics().endFrame();
     }
 
 private:
