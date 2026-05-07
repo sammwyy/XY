@@ -1,6 +1,7 @@
 #include "xy_graphics.hpp"
 #include <dmaKit.h>
 #include <cstdarg>
+#include <cmath>
 #include <cstdio>
 #include <vector>
 
@@ -83,6 +84,42 @@ const u8* glyphFor(char c) {
     return unknown;
 }
 
+int gsCoord(float value, int offset) {
+    int coord = static_cast<int>(value * 16.0f) + offset;
+    if (coord < 0) return 0;
+    if (coord >= 4096 * 16) return 4096 * 16 - 1;
+    return coord;
+}
+
+int gsUv(float value, int max) {
+    int coord = static_cast<int>(value * 16.0f);
+    if (coord < 0) return 0;
+    if (coord > max) coord = max;
+    if (coord >= 1024 * 16) return 1024 * 16 - 1;
+    return coord;
+}
+
+gs_rgbaq makeRgbaq(u64 color) {
+    gs_rgbaq out;
+    out.color.rgbaq = color;
+    out.tag = GS_RGBAQ;
+    return out;
+}
+
+gs_uv makeUv(const GSTEXTURE* texture, float u, float v) {
+    gs_uv out;
+    out.coord.uv = GS_SETREG_UV(gsUv(u, texture->Width * 16), gsUv(v, texture->Height * 16));
+    out.tag = GS_UV;
+    return out;
+}
+
+gs_xyz2 makeXyz2(const GSGLOBAL* gs, float x, float y, int z) {
+    gs_xyz2 out;
+    out.xyz.xyz = GS_SETREG_XYZ2(gsCoord(x, gs->OffsetX), gsCoord(y, gs->OffsetY), z);
+    out.tag = GS_XYZ2;
+    return out;
+}
+
 } // namespace
 
 u64 toGsColor(const Color &color) {
@@ -152,12 +189,64 @@ void XYGraphics::drawTexture(XYTexture &texture, float x, float y) {
 }
 
 void XYGraphics::drawTexture(XYTexture &texture, float x, float y, float width, float height, const Color &tint) {
+    drawTexture(texture, x, y, width, height, 0.0f, tint);
+}
+
+void XYGraphics::drawTexture(XYTexture &texture, float x, float y, float rotationRad) {
+    drawTexture(texture, x, y, static_cast<float>(texture.width()), static_cast<float>(texture.height()),
+                rotationRad);
+}
+
+void XYGraphics::drawTexture(XYTexture &texture, float x, float y, float width, float height,
+                             float rotationRad, const Color &tint) {
     if (!gs_ || !texture.valid()) return;
 
     GSTEXTURE *raw = texture.raw();
-    gsKit_prim_sprite_texture(gs_, raw, x, y, 0.0f, 0.0f, x + width, y + height,
-                              static_cast<float>(texture.width()), static_cast<float>(texture.height()), 1,
-                              toGsColor(tint));
+    if (!raw) return;
+
+    if (fabsf(rotationRad) < 0.0001f) {
+        gsKit_prim_sprite_texture(gs_, raw, x, y, 0.0f, 0.0f, x + width, y + height,
+                                  static_cast<float>(texture.width()), static_cast<float>(texture.height()), 1,
+                                  toGsColor(tint));
+        return;
+    }
+
+    const float cx = x + width * 0.5f;
+    const float cy = y + height * 0.5f;
+    const float hw = width * 0.5f;
+    const float hh = height * 0.5f;
+    const float c = cosf(rotationRad);
+    const float s = sinf(rotationRad);
+
+    float px[4];
+    float py[4];
+    const float localX[4] = {-hw, hw, hw, -hw};
+    const float localY[4] = {-hh, -hh, hh, hh};
+
+    for (int i = 0; i < 4; ++i) {
+        px[i] = cx + localX[i] * c - localY[i] * s;
+        py[i] = cy + localX[i] * s + localY[i] * c;
+    }
+
+    const float u0 = 0.0f;
+    const float v0 = 0.0f;
+    const float u1 = static_cast<float>(texture.width());
+    const float v1 = static_cast<float>(texture.height());
+    const u64 color = toGsColor(tint);
+
+    GSPRIMUVPOINT vertices[6];
+    const int indices[6] = {0, 1, 2, 0, 2, 3};
+    const float u[4] = {u0, u1, u1, u0};
+    const float v[4] = {v0, v0, v1, v1};
+
+    for (int i = 0; i < 6; ++i) {
+        const int index = indices[i];
+        vertices[i].rgbaq = makeRgbaq(color);
+        vertices[i].uv = makeUv(raw, u[index], v[index]);
+        vertices[i].xyz2 = makeXyz2(gs_, px[index], py[index], 1);
+    }
+
+    gsKit_prim_list_triangle_goraud_texture_uv_3d(gs_, raw, 6, vertices);
 }
 
 void XYGraphics::drawRect(float x, float y, float width, float height, const Color &color) {

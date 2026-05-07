@@ -22,8 +22,11 @@ public:
 
     // Textures
     void drawTexture(XYTexture& texture, float x, float y);
+    void drawTexture(XYTexture& texture, float x, float y, float rotationRad);
     void drawTexture(XYTexture& texture, float x, float y, float width, float height,
                      const Color& tint = Color());
+    void drawTexture(XYTexture& texture, float x, float y, float width, float height,
+                     float rotationRad, const Color& tint = Color());
     
     // Primitives
     void drawRect(float x, float y, float width, float height, const Color& color);

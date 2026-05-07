@@ -108,11 +108,15 @@ tex.load(gs, "host:assets/sprite.ps2tex");
 // Use
 graphics().drawTexture(tex, x, y);
 graphics().drawTexture(tex, x, y, w, h);
+graphics().drawTexture(tex, x, y, rotationRad);
+graphics().drawTexture(tex, x, y, w, h, rotationRad);
 
 // Cleanup
 tex.unload(gs);
 tex.free();
 ```
+
+`rotationRad` is optional and rotates the texture around the drawn rectangle center.
 
 ### Image Manager (caching)
 
