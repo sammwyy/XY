@@ -1,4 +1,4 @@
-EXAMPLES := render_images audio input_status debug_text custom_font
+EXAMPLES := render_images audio input_status debug_text custom_font tasks
 
 .PHONY: all clean $(EXAMPLES)
 
@@ -9,4 +9,3 @@ $(EXAMPLES):
 
 clean:
 	for example in $(EXAMPLES); do $(MAKE) -C examples/$$example clean; done
-

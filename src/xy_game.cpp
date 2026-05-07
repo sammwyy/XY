@@ -6,7 +6,7 @@
 namespace xy {
 
 XYGame::XYGame()
-    : running_(false), initialized_(false), graphics_(), input_(), audio_() {}
+    : running_(false), initialized_(false), graphics_(), input_(), audio_(), tasks_() {}
 
 XYGame::~XYGame() {}
 
@@ -30,13 +30,16 @@ int XYGame::run() {
         input_.update();
         audio_.update();
 
-        onUpdate(1.0f / 60.0f);
+        const float dt = 1.0f / 60.0f;
+        onUpdate(dt);
+        tasks_.update(dt);
         graphics_.beginFrame();
         onRender();
         graphics_.endFrame();
     }
 
     onShutdown();
+    tasks_.shutdown();
     audio_.shutdown();
     graphics_.shutdown();
     return 0;
@@ -56,6 +59,10 @@ XYInput& XYGame::input() {
 
 XYAudio& XYGame::audio() {
     return audio_;
+}
+
+XYTasks& XYGame::tasks() {
+    return tasks_;
 }
 
 bool XYGame::onInit() {
