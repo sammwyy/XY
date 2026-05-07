@@ -38,12 +38,14 @@ VPATH += \
     $(XY_ROOT)/src/async
 
 all: $(EE_BIN) audsrv.irx
+strip: $(EE_BIN)
+	$(EE_STRIP) --strip-all $(EE_BIN) -o $(basename $(EE_BIN))_stripped.elf
 
 audsrv.irx:
 	cp $(PS2SDK)/iop/irx/audsrv.irx .
 
 clean:
-	rm -f $(EE_BIN) $(EE_OBJS) audsrv.irx
+	rm -f $(EE_BIN) $(basename $(EE_BIN))_stripped.elf $(EE_OBJS) audsrv.irx
 
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
