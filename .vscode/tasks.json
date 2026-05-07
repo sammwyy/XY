@@ -1,0 +1,55 @@
+{
+    // Launchers for make commands via the Makefile extension
+    // Install: "Makefile Tools" (ms-vscode.makefile-tools)
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "XY: Build all examples",
+            "type": "shell",
+            "command": "make all",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "XY: Build example",
+            "type": "shell",
+            "command": "make build ${input:exampleId}",
+            "group": "build",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "XY: Run example (PCSX2)",
+            "type": "shell",
+            "command": "make run ${input:exampleId}",
+            "group": "test",
+            "presentation": { "reveal": "always", "panel": "shared" },
+            "problemMatcher": []
+        },
+        {
+            "label": "XY: Clean all",
+            "type": "shell",
+            "command": "make clean",
+            "group": "build",
+            "presentation": { "reveal": "always" },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "exampleId",
+            "type": "pickString",
+            "description": "Which example?",
+            "options": [
+                "render_images",
+                "audio",
+                "input_status",
+                "debug_text",
+                "custom_font",
+                "tasks"
+            ],
+            "default": "render_images"
+        }
+    ]
+}

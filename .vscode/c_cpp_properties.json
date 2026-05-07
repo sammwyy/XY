@@ -1,0 +1,78 @@
+{
+    "configurations": [
+        {
+            "name": "PS2 (Docker)",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "gcc-x64",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/graphics",
+                "${workspaceFolder}/src/mesh",
+                "${workspaceFolder}/src/image",
+                "${workspaceFolder}/src/sound",
+                "${workspaceFolder}/src/font",
+                "${workspaceFolder}/src/async",
+                "${PS2SDK}/ee/include",
+                "${PS2SDK}/common/include",
+                "${PS2SDK}/ports/include",
+                "${GSKIT}/include",
+                "/ps2dev/ee/mips64r5900el-ps2-elf/include",
+                "/ps2dev/ee/lib/gcc/mips64r5900el-ps2-elf/*/include",
+                "/usr/local/ps2dev/ps2sdk/ee/include",
+                "/usr/local/ps2dev/ps2sdk/common/include",
+                "/usr/local/ps2dev/ps2sdk/ports/include",
+                "/usr/local/ps2dev/gsKit/include"
+            ],
+            "defines": [
+                "_EE",
+                "_MIPS_ARCH_R5900",
+                "__mips__",
+                "__mips64",
+                "F_ENABLE_DEBUG=1",
+                "__attribute__(x)=",
+                "__volatile__=volatile"
+            ],
+            "forcedInclude": [],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/src",
+                    "${PS2SDK}/ee/include",
+                    "${PS2SDK}/common/include",
+                    "${PS2SDK}/ports/include",
+                    "${GSKIT}/include"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            }
+        },
+        {
+            "name": "PS2 (devcontainer / in-Docker)",
+            "compilerPath": "/ps2dev/ee/bin/mips64r5900el-ps2-elf-g++",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "gcc-x64",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/graphics",
+                "${workspaceFolder}/src/mesh",
+                "${workspaceFolder}/src/image",
+                "${workspaceFolder}/src/sound",
+                "${workspaceFolder}/src/font",
+                "${workspaceFolder}/src/async",
+                "/ps2dev/ps2sdk/ee/include",
+                "/ps2dev/ps2sdk/common/include",
+                "/ps2dev/ps2sdk/ports/include",
+                "/ps2dev/gsKit/include",
+                "/ps2dev/ee/mips64r5900el-ps2-elf/include"
+            ],
+            "defines": [
+                "_EE",
+                "_MIPS_ARCH_R5900",
+                "__mips__",
+                "__mips64"
+            ]
+        }
+    ],
+    "version": 4
+}

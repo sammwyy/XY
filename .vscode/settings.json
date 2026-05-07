@@ -1,0 +1,40 @@
+{
+    // C/C++ IntelliSense — usar configuración PS2
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/src/graphics",
+        "${workspaceFolder}/src/mesh",
+        "${workspaceFolder}/src/image",
+        "${workspaceFolder}/src/sound",
+        "${workspaceFolder}/src/font",
+        "${workspaceFolder}/src/async"
+    ],
+
+    // File associations
+    "files.associations": {
+        "*.hpp": "cpp",
+        "*.h": "c",
+        "*.vcl": "asm",
+        "*.vsm": "asm"
+    },
+
+    // Exclude build artifacts and Docker internals from explorer
+    "files.exclude": {
+        "**/**.o": true,
+        "**/**.elf": true,
+        "**/**.map": true,
+        "EXTERNAL_PS2GL/**/*.o": true
+    },
+
+    // Editor settings for C++ on PS2 (4-space indent, matches existing code)
+    "[cpp]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false
+    },
+
+    // Makefile tasks integration
+    "makefile.makefilePath": "${workspaceFolder}/Makefile",
+    "makefile.buildLog": "${workspaceFolder}/.vscode/build.log"
+}

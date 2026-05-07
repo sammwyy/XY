@@ -1,0 +1,70 @@
+{
+    "name": "XY PS2 Engine",
+
+    // Build from the existing Dockerfile
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": ".."
+    },
+
+    // Override the CMD so the container stays alive
+    "overrideCommand": true,
+
+    // Mount the workspace into /xy (same as Dockerfile WORKDIR)
+    "workspaceMount": "source=${localWorkspaceFolder},target=/xy,type=bind,consistency=cached",
+    "workspaceFolder": "/xy",
+
+    // Environment variables that the Makefile needs
+    "remoteEnv": {
+        "PS2DEV": "/ps2dev",
+        "PS2SDK": "/ps2dev/ps2sdk",
+        "GSKIT": "/ps2dev/gsKit",
+        "PATH": "/ps2dev/ee/bin:/ps2dev/iop/bin:/xy/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    },
+
+    // VS Code extensions to install inside the container
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",            // C/C++ IntelliSense
+                "ms-vscode.cpptools-extension-pack",
+                "ms-vscode.makefile-tools",       // Makefile tasks
+                "ms-vscode.hexeditor"             // Useful for ELF/binary inspection
+            ],
+            "settings": {
+                // Point the C++ extension to the PS2 cross-compiler
+                "C_Cpp.default.compilerPath": "/ps2dev/ee/bin/mips64r5900el-ps2-elf-g++",
+                "C_Cpp.default.cppStandard": "gnu++17",
+                "C_Cpp.default.intelliSenseMode": "gcc-x64",
+                "C_Cpp.default.includePath": [
+                    "/xy/src",
+                    "/xy/src/graphics",
+                    "/xy/src/mesh",
+                    "/xy/src/image",
+                    "/xy/src/sound",
+                    "/xy/src/font",
+                    "/xy/src/async",
+                    "/ps2dev/ps2sdk/ee/include",
+                    "/ps2dev/ps2sdk/common/include",
+                    "/ps2dev/ps2sdk/ports/include",
+                    "/ps2dev/gsKit/include",
+                    "/ps2dev/ee/mips64r5900el-ps2-elf/include"
+                ],
+                "C_Cpp.default.defines": [
+                    "_EE",
+                    "_MIPS_ARCH_R5900",
+                    "__mips__",
+                    "__mips64"
+                ],
+                // Makefile integration
+                "makefile.makefilePath": "/xy/Makefile"
+            }
+        }
+    },
+
+    // Forwarded ports (none needed for PS2 dev, PCSX2 runs on host)
+    "forwardPorts": [],
+
+    // Run make all after container starts to verify the build
+    "postStartCommand": "echo '✅ XY PS2 devcontainer ready. Use: make build <example_id>'"
+}
