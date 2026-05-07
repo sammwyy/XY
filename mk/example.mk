@@ -24,7 +24,7 @@ EE_INCS += \
     -I$(GSKIT)/include \
     -I$(PS2SDK)/ports/include
 
-EE_CXXFLAGS += -std=gnu++17 -fno-exceptions -fno-rtti -Wall -Wextra
+EE_CXXFLAGS += -std=gnu++17 -fno-exceptions -fno-rtti -Wall -Wextra -DXY_MEM_DEBUG
 EE_LDFLAGS  += -L$(GSKIT)/lib -L$(PS2SDK)/ports/lib
 EE_LIBS     += -laudsrv -lpad -lgskit_toolkit -lgskit -ldmakit -lpng -ljpeg -lz -lm -ldebug
 

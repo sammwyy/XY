@@ -47,7 +47,7 @@ bool XYImagePNG::loadGS(GSGLOBAL* gs) {
             uint32_t bpp = getBpp(texture_.PSM);
             uint32_t vramSize = (tbw * 64 * texture_.Height * bpp + 7) / 8;
             
-            std::printf("[XYImagePNG] Loading %s (%dx%d, PSM: %d, Size: %u)\n", 
+            std::printf("[XYImagePNG] Loading %s (%dx%d, PSM: %d, Size: %lu)\n", 
                        path_.c_str(), texture_.Width, texture_.Height, texture_.PSM, vramSize);
 
             texture_.Vram = XYVramAllocator::alloc(gs, vramSize);
