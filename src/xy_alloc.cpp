@@ -136,7 +136,7 @@ XYArenaAllocator::XYArenaAllocator(size_t capacity)
     , owns_buffer_(true)
 {
     XY_ASSERT(capacity > 0, "Arena: zero capacity");
-    // 64-byte align is fine for MIPS cache lines.
+    // Aligning to 64 bytes is optimal for the MIPS EE cache line size (64 bytes).
     base_ = static_cast<uint8_t*>(memalign(64, capacity));
     XY_ASSERT(base_ != nullptr, "Arena: allocation failed");
 }
@@ -346,7 +346,7 @@ size_t XYTransientAllocator::used() const {
 }
 
 // =============================================================================
-// XYVramAllocator  (improved)
+// XYVramAllocator
 // =============================================================================
 
 static const size_t VRAM_PAGE = 8192u;  // 8 KB GS page
@@ -455,28 +455,33 @@ void XYVramAllocator::_clear(GSGLOBAL* gs) {
     used_bytes_ = 0;
 }
 
-// Merge adjacent free blocks to reduce fragmentation.
+// Merges adjacent free blocks to reduce VRAM fragmentation.
 void XYVramAllocator::_coalesce() {
-    // Simple O(n²) coalesce — block count is small (≤128), fine for PS2.
-    bool merged = true;
-    while (merged) {
+    bool merged;
+    do {
         merged = false;
         for (size_t i = 0; i < num_blocks_; ++i) {
             if (!blocks_[i].free) continue;
+
             for (size_t j = 0; j < num_blocks_; ++j) {
                 if (i == j || !blocks_[j].free) continue;
+
+                // Check if block i and block j are contiguous.
                 if (blocks_[i].address + blocks_[i].size == blocks_[j].address) {
-                    // Merge j into i.
                     blocks_[i].size += blocks_[j].size;
-                    // Remove j by swapping with the last.
-                    blocks_[j] = blocks_[--num_blocks_];
+                    
+                    // Remove block j by shifting the rest of the array.
+                    for (size_t k = j; k < num_blocks_ - 1; ++k) {
+                        blocks_[k] = blocks_[k + 1];
+                    }
+                    num_blocks_--;
                     merged = true;
                     break;
                 }
             }
             if (merged) break;
         }
-    }
+    } while (merged);
 }
 
 // =============================================================================
@@ -539,6 +544,7 @@ void* XYHeapAllocator::_alloc(size_t size, MemTag tag,
 
     MemHeader* hdr = static_cast<MemHeader*>(raw);
     hdr->magic  = MEM_MAGIC;
+    hdr->offset = static_cast<uint32_t>(header_sz);
     hdr->size   = size;
     hdr->tag    = tag;
     memset(hdr->_pad, 0, sizeof(hdr->_pad));
@@ -552,7 +558,14 @@ void* XYHeapAllocator::_alloc(size_t size, MemTag tag,
     used_bytes_            += size;
     used_by_tag_[static_cast<size_t>(tag)] += size;
 
-    void* user_ptr = reinterpret_cast<uint8_t*>(raw) + header_sz;
+    uint8_t* user_ptr_bytes = reinterpret_cast<uint8_t*>(raw) + header_sz;
+    
+    // Store the offset in the 4 bytes immediately preceding the user pointer.
+    // This allows _free to find the header even if the alignment varies.
+    uint32_t* offset_ptr = reinterpret_cast<uint32_t*>(user_ptr_bytes - 4);
+    *offset_ptr = static_cast<uint32_t>(header_sz);
+
+    void* user_ptr = static_cast<void*>(user_ptr_bytes);
 
 #ifdef XY_MEM_DEBUG
     mem_debug_record(user_ptr, size, tag, file, line);
@@ -564,20 +577,16 @@ void* XYHeapAllocator::_alloc(size_t size, MemTag tag,
 void XYHeapAllocator::_free(void* ptr) {
     if (!ptr) return;
 
-    // Locate the header: we stored it at an alignment-padded distance.
-    // Try standard sizeof(MemHeader) offset first, then fall back to scan.
-    // In practice alignment is always the same, so direct offset is reliable.
-    // We use alignment=128 by default, so header_sz = 128.
-    static const size_t DEFAULT_HEADER_SZ = align_up(sizeof(MemHeader), 128u);
-
-    MemHeader* hdr = reinterpret_cast<MemHeader*>(
-        reinterpret_cast<uint8_t*>(ptr) - DEFAULT_HEADER_SZ);
+    // The header location is determined by the offset stored immediately before the user pointer.
+    // This mechanism supports variable alignment while allowing the allocator to find the
+    // metadata required for deallocation.
+    uint32_t* offset_ptr = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(ptr) - 4);
+    uint32_t offset = *offset_ptr;
+    
+    MemHeader* hdr = reinterpret_cast<MemHeader*>(static_cast<uint8_t*>(ptr) - offset);
 
     if (hdr->magic != MEM_MAGIC) {
-        // Attempt fallback: raw memalign pointer passed directly.
-        std::printf("[Heap] free: bad magic for ptr=%p, trying raw free\n", ptr);
-        hdr->magic = MEM_DEAD;
-        ::free(ptr);
+        std::printf("[Heap] free: bad magic for ptr=%p. Memory may be corrupted or not allocated via XYHeap.\n", ptr);
         return;
     }
 

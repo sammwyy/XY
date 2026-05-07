@@ -367,7 +367,7 @@ private:
 };
 
 // =============================================================================
-// XYVramAllocator  (improved)
+// XYVramAllocator
 // =============================================================================
 //  Best-fit allocator for GS VRAM (4 MB).
 //  Supports coalescing of adjacent free blocks to reduce fragmentation.
@@ -447,9 +447,10 @@ private:
     static constexpr uint32_t MEM_DEAD    = 0xDEADBEEFu;
 
     struct MemHeader {
-        uint32_t magic;
-        size_t   size;
-        MemTag   tag;
+        uint32_t magic;      // MEM_MAGIC
+        uint32_t offset;     // Offset from raw pointer to user pointer
+        size_t   size;       // Size of the user allocation
+        MemTag   tag;        // System tag for tracking
         uint8_t  _pad[3];
 #ifdef XY_MEM_DEBUG
         const char* file;

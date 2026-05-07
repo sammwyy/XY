@@ -104,9 +104,8 @@ bool XYFont::loadGrid(const char* path, int char_width, int char_height, XYFontH
     fnt.metrics.descent = 0;
     fnt.pages.push_back(path);
 
-    // We don't know scaleW/H yet until we load the texture, but we can assume 1.0 UVs for pixels
-    // No, UVs in FNT are normalized by scaleW/H.
-    // We'll set them to something and update if possible.
+    // Texture scale is required for normalized UV calculations in FNT fonts.
+    // Defaulting to 1.0 until the texture is loaded and dimensions are known.
     fnt.scaleW = 1;
     fnt.scaleH = 1;
 
@@ -163,9 +162,8 @@ void XYFont::unload(XYFontHandle font) {
 bool XYFont::addPage(XYFontHandle font, struct gsTexture* texture) {
     if (font >= MAX_FONTS || s_font_slots[font].type == FONT_TYPE_NONE) return false;
     
-    // Convert to XYTexture (we can't really since it's a wrapper, but we can store it)
-    // Actually, it's better to add a field to Slot for manual overrides.
-    // For now, let's just implement the one that takes XYTexture*
+    // XYTexture is a wrapper around shared_ptr/raw GSTEXTURE.
+    // Currently, this override is a placeholder for manual texture registration.
     return false;
 }
 

@@ -281,10 +281,9 @@ void XYGraphics::drawText(float x, float y, const std::string& text, const Color
         GSTEXTURE* tex = XYFont::getPageTexture(font, vertices[i].page);
         if (!tex) continue;
 
-        // Note: xy_font layout gives triangle list. 
-        // We use gsKit_prim_sprite_texture for simple quads if it's 6 vertices forming a quad.
-        // Or we can use gsKit_prim_list_triangle_texture if available.
-        // For now, let's use the individual character quad drawing but optimized with layout data.
+        // xy_font layout provides a triangle list for the text mesh.
+        // Batching by page minimizes texture swaps for better performance.
+        // The following loop draws individual character quads using the layout data.
         
         float x0 = vertices[i].x;
         float y0 = vertices[i].y;
