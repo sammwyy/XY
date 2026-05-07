@@ -2,3 +2,4 @@
 *.o
 *.irx
 build/
+_EXTERNAL_PS2GL_

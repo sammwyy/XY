@@ -64,7 +64,6 @@ endif
 
 clean-all:
 	for example in $(EXAMPLES); do $(MAKE) -C examples/$$example clean; done
-<<<<<<< HEAD
 
 clean-one:
 	@if [ ! -d "./examples/$(EXAMPLE_ARG)" ]; then \
@@ -77,5 +76,3 @@ clean-one:
 # Swallow the extra goal passed to `make run <example_id>`.
 %:
 	@:
-=======
->>>>>>> f58cf64618dfa6abccde7f6cafde88c3dc2aa1fb

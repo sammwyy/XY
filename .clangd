@@ -1,0 +1,39 @@
+CompileFlags:
+  Compiler: /usr/local/ps2dev/ee/bin/mips64r5900el-ps2-elf-g++
+
+  Add:
+    # Target / standard
+    - --target=mips64r5900el-ps2-elf
+    - -std=gnu++17
+
+    # Project includes
+    - -Isrc
+    - -Isrc/graphics
+    - -Isrc/mesh
+    - -Isrc/image
+    - -Isrc/sound
+    - -Isrc/font
+    - -Isrc/async
+
+    # PS2SDK
+    - -I/usr/local/ps2dev/ps2sdk/ee/include
+    - -I/usr/local/ps2dev/ps2sdk/common/include
+    - -I/usr/local/ps2dev/ps2sdk/ports/include
+
+    # gsKit
+    - -I/usr/local/ps2dev/gsKit/include
+
+    # Toolchain headers
+    - -I/usr/local/ps2dev/ee/mips64r5900el-ps2-elf/include
+    - -I/usr/local/ps2dev/ee/lib/gcc/mips64r5900el-ps2-elf/12.2.0/include
+
+    # Defines
+    - -D_EE
+    - -D_MIPS_ARCH_R5900
+    - -D__mips__
+    - -D__mips64
+    - -DF_ENABLE_DEBUG=1
+
+Diagnostics:
+  Suppress:
+    - unused-command-line-argument
