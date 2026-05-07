@@ -1,6 +1,7 @@
 #pragma once
 
 #include "xy_audio.hpp"
+#include "async/xy_async.hpp"
 #include "graphics/xy_graphics.hpp"
 #include "xy_input.hpp"
 
@@ -17,6 +18,7 @@ public:
     XYGraphics& graphics();
     XYInput& input();
     XYAudio& audio();
+    XYTasks& tasks();
 
 protected:
     virtual bool onInit();
@@ -30,6 +32,7 @@ private:
     XYGraphics graphics_;
     XYInput input_;
     XYAudio audio_;
+    XYTasks tasks_;
 };
 
 } // namespace xy

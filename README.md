@@ -18,8 +18,13 @@ C++ PS2 engine using ps2sdk, gsKit and audsrv.
 
 ## Docs
 
+- [App / Game Interface](docs/app.md) — `XYGame` lifecycle and core services.
+- [Input System](docs/input.md) — joypad state, buttons, and examples.
+- [Task System](docs/tasks.md) — main-thread timers and EE async threads.
+- [Font Runtime](docs/fonts.md) — loading and rendering custom fonts.
 - [Audio System](docs/audio.md) — P2SN format, converter, mixer API.
 - [Image System](docs/image.md) — P2TX format, converter, texture API.
+- [Font Format](docs/font_format.md) — `.p2f` binary format and converter details.
 
 ## Asset Pipeline
 
@@ -38,6 +43,7 @@ Source assets (WAV, PNG, JPG) are converted offline to PS2-optimized binary form
 - `examples/input_status`: text status for both joypads.
 - `examples/render_images`: JPG background plus centered PNG sprite (using `.ps2tex`).
 - `examples/custom_font`: Demonstrates custom BMFont loading and rendering.
+- `examples/tasks`: Demonstrates delayed and repeated tasks.
 
 ## Tools
 
@@ -53,6 +59,7 @@ build.bat render_images
 build.bat audio
 build.bat input_status
 build.bat debug_text
+build.bat tasks
 build.bat all
 
 # Linux/MacOS
@@ -60,6 +67,7 @@ sh build.sh render_images
 sh build.sh audio
 sh build.sh input_status
 sh build.sh debug_text
+sh build.sh tasks
 sh build.sh all
 ```
 
