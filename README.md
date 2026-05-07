@@ -37,11 +37,13 @@ Source assets (WAV, PNG, JPG) are converted offline to PS2-optimized binary form
 - `examples/debug_text`: debug overlay and glyph sample.
 - `examples/input_status`: text status for both joypads.
 - `examples/render_images`: JPG background plus centered PNG sprite (using `.ps2tex`).
+- `examples/custom_font`: Demonstrates custom BMFont loading and rendering.
 
 ## Tools
 
 - `tools/ps2snd.py`: WAV → `.snd` (P2SN) converter. Supports `--mono`, `--resample`, `--loop-start/end`.
 - `tools/ps2tex.py`: PNG/JPG → `.ps2tex` (P2TX) converter. Supports `--format` (psmt8/psmt4/ct16/ct32) and `--swizzle`.
+- `Font Tool`: Use any BMFont-compatible exporter (like AngelCode BMFont or Littera) to generate `.fnt` files.
 
 ## Build
 

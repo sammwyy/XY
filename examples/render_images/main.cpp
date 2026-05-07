@@ -15,7 +15,7 @@ public:
         float y = (graphics().height() - sprite_.height()) * 0.5f;
         graphics().drawTexture(sprite_, x, y);
 
-        debugText().drawText(16, 16, "PNG SPRITE + JPG BACKGROUND", xy::Color(255, 255, 255), 2);
+        graphics().drawText(16, 16, "PNG SPRITE + JPG BACKGROUND", xy::Color(255, 255, 255), 2.0f);
     }
 
 private:

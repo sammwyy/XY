@@ -6,7 +6,7 @@
 namespace xy {
 
 XYGame::XYGame()
-    : running_(false), initialized_(false), graphics_(), input_(), audio_(), debugText_(graphics_) {}
+    : running_(false), initialized_(false), graphics_(), input_(), audio_() {}
 
 XYGame::~XYGame() {}
 
@@ -58,10 +58,6 @@ XYAudio& XYGame::audio() {
     return audio_;
 }
 
-XYDebugText& XYGame::debugText() {
-    return debugText_;
-}
-
 bool XYGame::onInit() {
     return true;
 }
@@ -73,4 +69,3 @@ void XYGame::onRender() {}
 void XYGame::onShutdown() {}
 
 } // namespace xy
-

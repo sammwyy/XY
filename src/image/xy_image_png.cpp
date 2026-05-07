@@ -39,18 +39,33 @@ bool XYImagePNG::loadGS(GSGLOBAL* gs) {
 
     int res = gsKit_texture_png(gs, &texture_, const_cast<char*>(path_.c_str()));
     if (res >= 0) {
-        uint32_t tbw = (texture_.Width + 63) / 64;
-        texture_.TBW = tbw;
-        uint32_t vramSize = tbw * 64 * texture_.Height * (getBpp(texture_.PSM) / 8);
-        texture_.Vram = XYVramAllocator::alloc(gs, vramSize);
-        if (texture_.Vram == 0) return false;
+        std::printf("[XYImagePNG] gsKit_texture_png success: %dx%d, PSM: %d\n", 
+                   texture_.Width, texture_.Height, texture_.PSM);
+        if (texture_.Vram == 0) {
+            uint32_t tbw = (texture_.Width + 63) / 64;
+            texture_.TBW = tbw;
+            uint32_t bpp = getBpp(texture_.PSM);
+            uint32_t vramSize = (tbw * 64 * texture_.Height * bpp + 7) / 8;
+            
+            std::printf("[XYImagePNG] Loading %s (%dx%d, PSM: %d, Size: %u)\n", 
+                       path_.c_str(), texture_.Width, texture_.Height, texture_.PSM, vramSize);
+
+            texture_.Vram = XYVramAllocator::alloc(gs, vramSize);
+            if (texture_.Vram == 0) {
+                std::printf("[XYImagePNG] VRAM allocation failed for %s\n", path_.c_str());
+                return false;
+            }
+        }
 
         if (texture_.PSM == GS_PSM_T8 || texture_.PSM == GS_PSM_T4) {
             int clutWidth = (texture_.PSM == GS_PSM_T8) ? 16 : 8;
             int clutHeight = (texture_.PSM == GS_PSM_T8) ? 16 : 2;
             uint32_t clutSize = gsKit_texture_size(clutWidth, clutHeight, GS_PSM_CT32);
             texture_.VramClut = XYVramAllocator::alloc(gs, clutSize);
-            if (texture_.VramClut == 0) return false;
+            if (texture_.VramClut == 0) {
+                std::printf("[XYImagePNG] VRAM CLUT allocation failed for %s\n", path_.c_str());
+                return false;
+            }
         }
 
         if (texture_.Mem) {
@@ -66,6 +81,8 @@ bool XYImagePNG::loadGS(GSGLOBAL* gs) {
         gsKit_texture_upload(gs, &texture_);
         dmaKit_wait_fast();
         
+        std::printf("[XYImagePNG] Uploaded %s to VRAM 0x%08X\n", path_.c_str(), texture_.Vram);
+
         if (texture_.Mem) {
             ee_free(texture_.Mem);
             texture_.Mem = nullptr;
@@ -78,6 +95,8 @@ bool XYImagePNG::loadGS(GSGLOBAL* gs) {
         
         return true;
     }
+
+    std::printf("[XYImagePNG] gsKit_texture_png failed for %s (res: %d)\n", path_.c_str(), res);
     return false;
 }
 

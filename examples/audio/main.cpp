@@ -27,9 +27,9 @@ public:
     }
 
     void onRender() override {
-        debugText().drawText(34, 44, "AUDIO EXAMPLE", xy::Color(255, 255, 80), 3);
-        debugText().drawText(34, 90, "BGM LOOP: ASSETS/BGM.SND", xy::Color(230, 240, 255), 2);
-        debugText().drawText(34, 125, "CROSS  CIRCLE  SQUARE", xy::Color(160, 255, 190), 2);
+        graphics().drawText(34, 44, "AUDIO EXAMPLE", xy::Color(255, 255, 80), 3.0f);
+        graphics().drawText(34, 90, "BGM LOOP: ASSETS/BGM.SND", xy::Color(230, 240, 255), 2.0f);
+        graphics().drawText(34, 125, "CROSS  CIRCLE  SQUARE", xy::Color(160, 255, 190), 2.0f);
     }
 
 private:

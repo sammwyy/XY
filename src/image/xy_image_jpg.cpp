@@ -39,11 +39,13 @@ bool XYImageJPG::loadGS(GSGLOBAL* gs) {
 
     int res = gsKit_texture_jpeg_scale(gs, &texture_, const_cast<char*>(path_.c_str()), 0);
     if (res >= 0) {
-        uint32_t tbw = (texture_.Width + 63) / 64;
-        texture_.TBW = tbw;
-        uint32_t vramSize = tbw * 64 * texture_.Height * (getBpp(texture_.PSM) / 8);
-        texture_.Vram = XYVramAllocator::alloc(gs, vramSize);
-        if (texture_.Vram == 0) return false;
+        if (texture_.Vram == 0) {
+            uint32_t tbw = (texture_.Width + 63) / 64;
+            texture_.TBW = tbw;
+            uint32_t vramSize = tbw * 64 * texture_.Height * (getBpp(texture_.PSM) / 8);
+            texture_.Vram = XYVramAllocator::alloc(gs, vramSize);
+            if (texture_.Vram == 0) return false;
+        }
 
         if (texture_.Mem) {
             SyncDCache(texture_.Mem, (u8*)texture_.Mem + (texture_.Width * texture_.Height * (getBpp(texture_.PSM) / 8)));

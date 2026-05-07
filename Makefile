@@ -1,4 +1,4 @@
-EXAMPLES := render_images audio input_status debug_text
+EXAMPLES := render_images audio input_status debug_text custom_font
 
 .PHONY: all clean $(EXAMPLES)
 

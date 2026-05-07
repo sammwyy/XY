@@ -1,8 +1,7 @@
 #pragma once
 
 #include "xy_audio.hpp"
-#include "xy_debug_text.hpp"
-#include "xy_graphics.hpp"
+#include "graphics/xy_graphics.hpp"
 #include "xy_input.hpp"
 
 namespace xy {
@@ -18,7 +17,6 @@ public:
     XYGraphics& graphics();
     XYInput& input();
     XYAudio& audio();
-    XYDebugText& debugText();
 
 protected:
     virtual bool onInit();
@@ -32,8 +30,6 @@ private:
     XYGraphics graphics_;
     XYInput input_;
     XYAudio audio_;
-    XYDebugText debugText_;
 };
 
 } // namespace xy
-
