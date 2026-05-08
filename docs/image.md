@@ -111,6 +111,8 @@ graphics().drawTexture(tex, x, y, w, h);
 graphics().drawTexture(tex, x, y, rotationRad);
 graphics().drawTexture(tex, x, y, w, h, rotationRad);
 
+graphics().drawTexture(tex, x, y, w, h, xy::Color());
+
 // Cleanup
 tex.unload(gs);
 tex.free();

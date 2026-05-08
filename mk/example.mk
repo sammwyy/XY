@@ -1,4 +1,5 @@
 XY_ROOT ?= ../..
+OBJ_DIR := obj
 
 # Core 2D modules
 XY_OBJS_2D := xy_image.o xy_image_png.o xy_image_jpg.o xy_image_p2t.o \
@@ -11,6 +12,8 @@ XY_OBJS_2D := xy_image.o xy_image_png.o xy_image_jpg.o xy_image_p2t.o \
 XY_OBJS_3D := xy_mesh.o xy_camera.o xy_light.o xy_renderer3d.o
 
 EE_OBJS := main.o $(XY_OBJS_2D) $(XY_OBJS_3D)
+EE_OBJS := $(addprefix $(OBJ_DIR)/, $(EE_OBJS))
+
 EE_CC = $(EE_CXX)
 
 EE_INCS += \
@@ -37,7 +40,17 @@ VPATH += \
     $(XY_ROOT)/src/font \
     $(XY_ROOT)/src/async
 
-all: $(EE_BIN) audsrv.irx
+.PHONY: all clean strip $(OBJ_DIR)
+
+all: $(OBJ_DIR) $(EE_BIN) audsrv.irx
+
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
+
+# Custom rule to compile objects into the obj directory
+$(OBJ_DIR)/%.o: %.cpp
+	$(EE_CXX) $(EE_CXXFLAGS) $(EE_INCS) -c $< -o $@
+
 strip: $(EE_BIN)
 	$(EE_STRIP) --strip-all $(EE_BIN) -o $(basename $(EE_BIN))_stripped.elf
 
@@ -45,7 +58,8 @@ audsrv.irx:
 	cp $(PS2SDK)/iop/irx/audsrv.irx .
 
 clean:
-	rm -f $(EE_BIN) $(basename $(EE_BIN))_stripped.elf $(EE_OBJS) audsrv.irx
+	rm -f $(EE_BIN) $(basename $(EE_BIN))_stripped.elf audsrv.irx
+	rm -rf $(OBJ_DIR)
 
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal

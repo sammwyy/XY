@@ -33,71 +33,72 @@ XYImageP2T::~XYImageP2T() {
 
 bool XYImageP2T::loadEE(const std::string& path) {
     path_ = path;
+    
+    FILE* fp = std::fopen(path_.c_str(), "rb");
+    if (!fp) return false;
+
+    if (std::fread(&header_, 1, sizeof(header_), fp) != sizeof(header_)) {
+        std::fclose(fp);
+        return false;
+    }
+
+    if (std::strncmp(header_.magic, "P2TX", 4) != 0) {
+        std::fclose(fp);
+        return false;
+    }
+
+    // Allocate and read pixel data
+    texture_.Mem = (u32*)ee_alloc(header_.data_size);
+    std::fseek(fp, header_.data_offset, SEEK_SET);
+    std::fread(texture_.Mem, 1, header_.data_size, fp);
+
+    // Allocate and read CLUT if present
+    if (header_.has_clut) {
+        texture_.Clut = (u32*)ee_alloc(header_.clut_size);
+        std::fseek(fp, header_.clut_offset, SEEK_SET);
+        std::fread(texture_.Clut, 1, header_.clut_size, fp);
+    }
+
+    std::fclose(fp);
+    
+    // We don't initialize the full GSTEXTURE yet, loadGS will do that.
     return true;
 }
 
 bool XYImageP2T::loadGS(GSGLOBAL* gs) {
     if (texture_.Vram != 0) return true;
 
-    FILE* fp = std::fopen(path_.c_str(), "rb");
-    if (!fp) return false;
-
-    if (std::fread(&header_, 1, sizeof(header_), fp) != sizeof(header_)) {
-        std::printf("[P2TX] Error reading header from %s\n", path_.c_str());
-        std::fclose(fp);
-        return false;
+    // If data is not in RAM, load it from file now (lazy load).
+    if (!texture_.Mem) {
+        if (!loadEE(path_)) return false;
     }
 
-    if (std::strncmp(header_.magic, "P2TX", 4) != 0) {
-        std::printf("[P2TX] Invalid magic in %s\n", path_.c_str());
-        std::fclose(fp);
-        return false;
-    }
-
+    // Initialize GSTEXTURE structure from header
     texture_.Width = header_.width;
     texture_.Height = header_.height;
     texture_.PSM = header_.psm;
     texture_.ClutPSM = header_.clut_psm;
     texture_.Delayed = 1;
     
-    // Calculate TBW (Texture Buffer Width)
-    // GS expects TBW in units of 64 pixels (at target PSM).
     uint32_t tbw = (texture_.Width + 63) / 64;
     texture_.TBW = tbw;
     
-    // Allocate VRAM
-    // Ensure we avoid integer division issues with PSMT4 (4bpp)
     uint32_t bpp = getBpp(texture_.PSM);
     uint32_t vramSize = (tbw * 64 * texture_.Height * bpp + 7) / 8;
 
-    std::printf("[P2TX] Loading %s (%dx%d, PSM: %d, Flags: 0x%02lX)\n", 
-               path_.c_str(), texture_.Width, texture_.Height, texture_.PSM, (long unsigned int)header_.flags);
+    std::printf("[P2TX] Loading GS %s (%dx%d, PSM: %d)\n", 
+               path_.c_str(), texture_.Width, texture_.Height, texture_.PSM);
 
     texture_.Vram = XYVramAllocator::alloc(gs, vramSize);
     if (texture_.Vram == 0) {
-        std::printf("[P2TX] Failed to allocate %lu bytes of VRAM\n", (long unsigned int)vramSize);
-        std::fclose(fp);
         return false;
     }
 
-    // Allocate EE memory for temporary storage
-    texture_.Mem = (u32*)ee_alloc(header_.data_size);
-    std::fseek(fp, header_.data_offset, SEEK_SET);
-    std::fread(texture_.Mem, 1, header_.data_size, fp);
-
     if (header_.has_clut) {
-        texture_.Clut = (u32*)ee_alloc(header_.clut_size);
-        std::fseek(fp, header_.clut_offset, SEEK_SET);
-        std::fread(texture_.Clut, 1, header_.clut_size, fp);
-        
-        // Allocate VRAM for CLUT
-        // CLUT for T8/T4 is always aligned to 64 bytes in VRAM (1 block minimum)
         uint32_t clutEntries = (texture_.PSM == GS_PSM_T8) ? 256 : 16;
         uint32_t clutVramSize = (clutEntries * 4 + 63) & ~63;
         texture_.VramClut = XYVramAllocator::alloc(gs, clutVramSize);
     }
-
-    std::fclose(fp);
 
     // Sync DCache before DMA upload
     if (texture_.Mem) {
@@ -111,9 +112,6 @@ bool XYImageP2T::loadGS(GSGLOBAL* gs) {
     // Upload to GS
     gsKit_texture_upload(gs, &texture_);
     dmaKit_wait_fast();
-
-    // Free EE memory after upload
-    freeEE();
 
     return true;
 }

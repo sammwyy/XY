@@ -55,7 +55,7 @@ bool XYImageJPG::loadGS(GSGLOBAL* gs) {
         dmaKit_wait_fast();
         
         if (texture_.Mem) {
-            ee_free(texture_.Mem);
+            std::free(texture_.Mem);
             texture_.Mem = nullptr;
         }
         return true;

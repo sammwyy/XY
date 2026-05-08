@@ -84,12 +84,12 @@ bool XYImagePNG::loadGS(GSGLOBAL* gs) {
         std::printf("[XYImagePNG] Uploaded %s to VRAM 0x%08X\n", path_.c_str(), texture_.Vram);
 
         if (texture_.Mem) {
-            ee_free(texture_.Mem);
+            std::free(texture_.Mem);
             texture_.Mem = nullptr;
         }
         
         if (texture_.Clut) {
-            ee_free(texture_.Clut);
+            std::free(texture_.Clut);
             texture_.Clut = nullptr;
         }
         

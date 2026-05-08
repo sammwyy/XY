@@ -1,8 +1,13 @@
 #include "xy_graphics.hpp"
+#include "../xy_alloc.hpp"
 #include <dmaKit.h>
+#include <algorithm>
 #include <cstdarg>
+#include <cstdint>
+#include <cstring>
 #include <cmath>
 #include <cstdio>
+#include <kernel.h>
 #include <vector>
 
 namespace xy {
@@ -123,7 +128,7 @@ gs_xyz2 makeXyz2(const GSGLOBAL* gs, float x, float y, int z) {
 } // namespace
 
 u64 toGsColor(const Color &color) {
-    return GS_SETREG_RGBAQ(color.r, color.g, color.b, (color.a + 1) >> 1, 0x00);
+    return GS_SETREG_RGBAQ((color.r + 1) >> 1, (color.g + 1) >> 1, (color.b + 1) >> 1, (color.a + 1) >> 1, 0x00);
 }
 
 XYGraphics::XYGraphics() : gs_(nullptr), width_(640), height_(448) {}
@@ -158,12 +163,13 @@ bool XYGraphics::init(int width, int height) {
     gsKit_init_screen(gs_);
     gsKit_mode_switch(gs_, GS_ONESHOT);
     
+    vramStart_ = gs_->CurrentPointer;
+
     gs_->PrimAlphaEnable = GS_SETTING_ON;
     gs_->PrimAAEnable = GS_SETTING_ON;
     
+    gsKit_set_test(gs_, GS_ATEST_ON);
     gsKit_set_primalpha(gs_, GS_SETREG_ALPHA(0, 1, 0, 1, 0), 0);
-    
-    gsKit_set_test(gs_, GS_ATEST_OFF);
     gsKit_set_test(gs_, GS_ZTEST_OFF);
 
     return true;
@@ -171,6 +177,13 @@ bool XYGraphics::init(int width, int height) {
 
 void XYGraphics::shutdown() {
     gs_ = nullptr;
+}
+
+void XYGraphics::resetVram() {
+    if (!gs_) return;
+    std::printf("[VRAM] Resetting to 0x%08lx (was 0x%08lx)\n", (unsigned long)vramStart_, (unsigned long)gs_->CurrentPointer);
+    gs_->CurrentPointer = vramStart_;
+    XYVramAllocator::clear(gs_);
 }
 
 void XYGraphics::beginFrame(const Color &clearColor) {
@@ -185,10 +198,12 @@ void XYGraphics::endFrame() {
 }
 
 void XYGraphics::drawTexture(XYTexture &texture, float x, float y) {
-    drawTexture(texture, x, y, static_cast<float>(texture.width()), static_cast<float>(texture.height()));
+    drawTexture(texture, x, y, static_cast<float>(texture.width()), static_cast<float>(texture.height()),
+                Color());
 }
 
-void XYGraphics::drawTexture(XYTexture &texture, float x, float y, float width, float height, const Color &tint) {
+void XYGraphics::drawTexture(XYTexture &texture, float x, float y, float width, float height,
+                             const Color &tint) {
     drawTexture(texture, x, y, width, height, 0.0f, tint);
 }
 
@@ -249,6 +264,22 @@ void XYGraphics::drawTexture(XYTexture &texture, float x, float y, float width, 
     gsKit_prim_list_triangle_goraud_texture_uv_3d(gs_, raw, 6, vertices);
 }
 
+void XYGraphics::drawTextureRegion(XYTexture& texture, float srcX, float srcY, float srcW, float srcH,
+                                   float dstX, float dstY, float dstW, float dstH,
+                                   const Color& tint) {
+    if (!gs_ || !texture.valid()) return;
+
+    GSTEXTURE* raw = texture.raw();
+    if (!raw) return;
+
+    gsKit_prim_sprite_texture(gs_, raw,
+                               dstX, dstY,
+                               srcX, srcY,
+                               dstX + dstW, dstY + dstH,
+                               srcX + srcW, srcY + srcH,
+                               1, toGsColor(tint));
+}
+
 void XYGraphics::drawRect(float x, float y, float width, float height, const Color &color) {
     if (!gs_) return;
     gsKit_prim_sprite(gs_, x, y, x + width, y + height, 1, toGsColor(color));
@@ -276,14 +307,8 @@ void XYGraphics::drawText(float x, float y, const std::string& text, const Color
     if (count == 0) return;
 
     for (int i = 0; i < count; i += 6) {
-        // Simple batching: draw 6 vertices (2 triangles / 1 quad) at a time
-        // Optimization: group by page to avoid redundant texture binds
         GSTEXTURE* tex = XYFont::getPageTexture(font, vertices[i].page);
         if (!tex) continue;
-
-        // xy_font layout provides a triangle list for the text mesh.
-        // Batching by page minimizes texture swaps for better performance.
-        // The following loop draws individual character quads using the layout data.
         
         float x0 = vertices[i].x;
         float y0 = vertices[i].y;

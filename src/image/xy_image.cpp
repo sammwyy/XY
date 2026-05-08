@@ -30,6 +30,25 @@ void XYTexture::free() {
     }
 }
 
+bool XYTexture::swapIn(GSGLOBAL* gs) {
+    if (!image_) return false;
+    return image_->loadGS(gs);
+}
+
+void XYTexture::swapOut(GSGLOBAL* gs) {
+    if (image_) {
+        image_->unloadGS(gs);
+    }
+}
+
+bool XYTexture::isResidentGS() const {
+    return image_ && image_->isResidentGS();
+}
+
+bool XYTexture::isResidentEE() const {
+    return image_ && image_->isResidentEE();
+}
+
 int XYTexture::width() const {
     return image_ ? image_->width() : 0;
 }
@@ -44,6 +63,10 @@ bool XYTexture::valid() const {
 
 GSTEXTURE* XYTexture::raw() {
     return image_ ? image_->raw() : nullptr;
+}
+
+const std::string& XYTexture::path() const {
+    return path_;
 }
 
 // --- XYImageManager ---

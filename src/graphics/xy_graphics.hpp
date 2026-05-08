@@ -19,6 +19,7 @@ public:
 
     void beginFrame(const Color& clearColor = Color(0, 0, 0, 128));
     void endFrame();
+    void resetVram();
 
     // Textures
     void drawTexture(XYTexture& texture, float x, float y);
@@ -27,6 +28,9 @@ public:
                      const Color& tint = Color());
     void drawTexture(XYTexture& texture, float x, float y, float width, float height,
                      float rotationRad, const Color& tint = Color());
+    void drawTextureRegion(XYTexture& texture, float srcX, float srcY, float srcW, float srcH,
+                           float dstX, float dstY, float dstW, float dstH,
+                           const Color& tint = Color());
     
     // Primitives
     void drawRect(float x, float y, float width, float height, const Color& color);
@@ -47,6 +51,7 @@ private:
     GSGLOBAL* gs_;
     int width_;
     int height_;
+    uint32_t vramStart_;
 };
 
 u64 toGsColor(const Color& color);

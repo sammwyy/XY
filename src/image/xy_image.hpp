@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <vector>
 
 namespace xy {
 
@@ -24,7 +25,10 @@ public:
     virtual int width() const = 0;
     virtual int height() const = 0;
     virtual GSTEXTURE* raw() = 0;
+    
     virtual bool valid() const = 0;
+    virtual bool isResidentEE() const = 0;
+    virtual bool isResidentGS() const = 0;
 };
 
 class XYImagePNG : public XYImage {
@@ -41,10 +45,13 @@ public:
     int height() const override { return texture_.Height; }
     GSTEXTURE* raw() override { return &texture_; }
     bool valid() const override { return texture_.Vram != 0; }
+    bool isResidentEE() const override { return pixels_ != nullptr; }
+    bool isResidentGS() const override { return texture_.Vram != 0; }
 
 private:
     GSTEXTURE texture_;
     std::string path_;
+    void* pixels_;
 };
 
 enum Ps2TexFlags {
@@ -58,6 +65,8 @@ struct Ps2TexHeader {
     uint16_t version;     // 1
     uint16_t width;
     uint16_t height;
+    uint16_t orig_width;
+    uint16_t orig_height;
 
     uint8_t psm;          // GS pixel storage mode
     uint8_t has_clut;
@@ -74,7 +83,7 @@ struct Ps2TexHeader {
     uint8_t reserved[6];
 } __attribute__((packed));
 
-static_assert(sizeof(Ps2TexHeader) == 40);
+static_assert(sizeof(Ps2TexHeader) == 44);
 
 class XYImageP2T : public XYImage {
 public:
@@ -90,6 +99,8 @@ public:
     int height() const override { return texture_.Height; }
     GSTEXTURE* raw() override { return &texture_; }
     bool valid() const override { return texture_.Vram != 0; }
+    bool isResidentEE() const override { return texture_.Mem != nullptr; }
+    bool isResidentGS() const override { return texture_.Vram != 0; }
 
 private:
     GSTEXTURE texture_;
@@ -111,6 +122,8 @@ public:
     int height() const override { return texture_.Height; }
     GSTEXTURE* raw() override { return &texture_; }
     bool valid() const override { return texture_.Vram != 0; }
+    bool isResidentEE() const override { return texture_.Mem != nullptr; }
+    bool isResidentGS() const override { return texture_.Vram != 0; }
 
 private:
     GSTEXTURE texture_;
@@ -139,10 +152,17 @@ public:
     void unload(GSGLOBAL* gs);
     void free();
 
+    // Swapping support
+    bool swapIn(GSGLOBAL* gs);
+    void swapOut(GSGLOBAL* gs);
+    bool isResidentGS() const;
+    bool isResidentEE() const;
+
     int width() const;
     int height() const;
     bool valid() const;
     GSTEXTURE* raw();
+    const std::string& path() const;
 
 private:
     std::shared_ptr<XYImage> image_;

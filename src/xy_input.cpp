@@ -61,9 +61,18 @@ bool XYInput::openPad(int port) {
         pads_[port].connected = false;
         return false;
     }
-    waitReady(port, 0);
+
+    if (!waitReady(port, 0)) {
+        pads_[port].connected = false;
+        return false;
+    }
+
     padSetMainMode(port, 0, PAD_MMODE_DUALSHOCK, PAD_MMODE_LOCK);
-    waitReady(port, 0);
+    if (!waitReady(port, 0)) {
+        pads_[port].connected = false;
+        return false;
+    }
+
     pads_[port].connected = true;
     return true;
 }
@@ -101,11 +110,21 @@ void XYInput::pollPad(int port) {
     state.connected = true;
 }
 
-void XYInput::waitReady(int port, int slot) const {
-    int state = 0;
-    do {
-        state = padGetState(port, slot);
-    } while (state != PAD_STATE_STABLE && state != PAD_STATE_FINDCTP1);
+bool XYInput::waitReady(int port, int slot) const {
+    // A missing controller or unsupported second port can stay disconnected forever.
+    // Keep boot non-blocking so games can run with one pad or no pad attached.
+    for (int tries = 0; tries < 120; ++tries) {
+        int state = padGetState(port, slot);
+        if (state == PAD_STATE_STABLE || state == PAD_STATE_FINDCTP1) {
+            return true;
+        }
+        if (state == PAD_STATE_DISCONN) {
+            return false;
+        }
+        nopdelay();
+    }
+
+    return false;
 }
 
 u16 XYInput::convertButtons(u16 ps2Buttons) const {

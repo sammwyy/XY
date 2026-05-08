@@ -51,7 +51,7 @@ public:
 private:
     bool openPad(int port);
     void pollPad(int port);
-    void waitReady(int port, int slot) const;
+    bool waitReady(int port, int slot) const;
     u16 convertButtons(u16 ps2Buttons) const;
 
     bool initialized_;

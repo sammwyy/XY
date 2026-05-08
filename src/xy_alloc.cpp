@@ -349,7 +349,7 @@ size_t XYTransientAllocator::used() const {
 // XYVramAllocator
 // =============================================================================
 
-static const size_t VRAM_PAGE = 8192u;  // 8 KB GS page
+static const size_t VRAM_PAGE = 256u;  // 256 bytes (GS block size, absolute minimum alignment)
 
 XYVramAllocator& XYVramAllocator::instance() {
     static XYVramAllocator inst;
@@ -406,8 +406,10 @@ uint32_t XYVramAllocator::_alloc(GSGLOBAL* gs, uint32_t size) {
         }
         blocks_[best].free = false;
         used_bytes_ += blocks_[best].size;
+        std::printf("[VRAM] BEST FIT alloc: 0x%08x (%u bytes), used: %u / %u\n", 
+                   blocks_[best].address, blocks_[best].size, (uint32_t)used_bytes_, (uint32_t)total_);
         return blocks_[best].address;
-    }
+}
 
     // Bump allocation from the end of VRAM.
     if (next_ptr_ == 0) {
@@ -433,6 +435,9 @@ uint32_t XYVramAllocator::_alloc(GSGLOBAL* gs, uint32_t size) {
     next_ptr_    = end;
     gs->CurrentPointer = next_ptr_;
 
+    std::printf("[VRAM] BUMP alloc: 0x%08x (%u bytes), used: %u / %u\n", 
+               addr, aligned_size, (uint32_t)used_bytes_, (uint32_t)total_);
+
     return addr;
 }
 
@@ -441,6 +446,8 @@ void XYVramAllocator::_free(uint32_t address) {
         if (blocks_[i].address == address && !blocks_[i].free) {
             blocks_[i].free = true;
             used_bytes_ -= blocks_[i].size;
+            std::printf("[VRAM] free: 0x%08x (%u bytes), used: %u\n", 
+                       address, blocks_[i].size, (uint32_t)used_bytes_);
             _coalesce();
             return;
         }

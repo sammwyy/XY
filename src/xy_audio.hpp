@@ -1,19 +1,25 @@
 #pragma once
 
 #include <tamtypes.h>
-
-#include <string>
-#include <vector>
+#include <cstdio>
+#include <cstdint>
 
 namespace xy {
 
 struct XYSound {
     int sampleRate;
     int channels;
-    std::vector<s16> samples;
+    s16* samples;
+    uint32_t sampleCount;
+    
+    bool isStreamed;
+    char path[128];
+    uint32_t dataOffset;
+    uint32_t dataSize;
 
-    XYSound() : sampleRate(44100), channels(2), samples() {}
-    bool valid() const { return !samples.empty(); }
+    XYSound();
+    ~XYSound();
+    bool valid() const { return isStreamed || samples != nullptr; }
 };
 
 class XYAudio {
@@ -24,9 +30,7 @@ public:
     bool init(int sampleRate = 44100, int channels = 2);
     void shutdown();
 
-    bool loadWav(const char* path, XYSound& out);
-    bool loadSnd(const char* path, XYSound& out);
-    bool load(const char* path, XYSound& out);  // auto-detect by extension
+    bool load(const char* path, XYSound& out);  
     void playBgm(const XYSound& sound, bool loop = true, float volume = 0.65f);
     void stopBgm();
     void playSfx(const XYSound& sound, float volume = 1.0f);
@@ -39,10 +43,18 @@ private:
         float volume;
         bool loop;
         bool active;
+        
+        FILE* file;
+        s16* streamBuffer;
+        int bufferOffset;
+        int bufferCount;
+        s16 lastSample;
     };
 
+    bool loadWav(const char* path, XYSound& out);
+    bool loadSnd(const char* path, XYSound& out);
+
     void mixFrames(int frames);
-    s16 sampleAt(const XYSound& sound, int frame, int channel) const;
 
     bool initialized_;
     int sampleRate_;
@@ -50,8 +62,10 @@ private:
     Voice bgm_;
     static const int kMaxSfx = 8;
     Voice sfx_[kMaxSfx];
-    std::vector<s16> mixBuffer_;
+    s16* mixBuffer_;
+
+    static const int framesPerUpdate = 256;
+    static const int streamBufferSize = 32768; // 64KB
 };
 
 } // namespace xy
-
